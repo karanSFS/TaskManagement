@@ -396,7 +396,9 @@ deno_version = 2
 # secret_key = "env(SECRET_VALUE)"
 
 [analytics]
-enabled = true
+# Off locally: the analytics and vector containers fail their health checks
+# on this 8GB machine and are not required for auth, database, storage, or realtime.
+enabled = false
 port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
