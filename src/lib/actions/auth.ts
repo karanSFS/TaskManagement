@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -126,6 +127,23 @@ export async function updateProfile(values: ProfileValues): Promise<ActionState>
   }
 
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Sign in to update your profile." }
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ display_name: parsed.data.fullName })
+    .eq("id", user.id)
+
+  if (profileError) {
+    return { error: "Could not save your profile." }
+  }
+
   const { error } = await supabase.auth.updateUser({
     data: { full_name: parsed.data.fullName },
   })
@@ -134,6 +152,7 @@ export async function updateProfile(values: ProfileValues): Promise<ActionState>
     return { error: error.message }
   }
 
+  revalidatePath("/", "layout")
   return { success: "Profile updated." }
 }
 

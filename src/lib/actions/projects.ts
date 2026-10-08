@@ -69,21 +69,27 @@ export async function createProject(values: unknown): Promise<ActionState> {
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("projects")
-    .insert({
-      name: parsed.data.name,
-      key: parsed.data.key,
-      description: parsed.data.description,
-      icon: parsed.data.icon || null,
-      created_by: user.id,
-      lead_id: user.id,
-    })
-    .select("id")
-    .single()
+  const { error } = await supabase.from("projects").insert({
+    name: parsed.data.name,
+    key: parsed.data.key,
+    description: parsed.data.description,
+    icon: parsed.data.icon || null,
+    created_by: user.id,
+    lead_id: user.id,
+  })
 
-  if (error || !data) {
-    return { error: dbError(error?.message ?? "") }
+  if (error) {
+    return { error: dbError(error.message) }
+  }
+
+  const { data, error: readError } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("key", parsed.data.key)
+    .maybeSingle()
+
+  if (readError || !data) {
+    redirect("/projects")
   }
 
   projectPaths(data.id)

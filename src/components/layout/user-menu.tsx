@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { LogOut, Settings, UserRound } from "lucide-react"
 
 import { userInitials } from "@/lib/auth/user"
@@ -23,6 +23,8 @@ type UserMenuProps = {
 }
 
 export function UserMenu({ user }: UserMenuProps) {
+  const router = useRouter()
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,17 +40,13 @@ export function UserMenu({ user }: UserMenuProps) {
           <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/settings/profile">
-            <UserRound />
-            Profile
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/settings/profile")}>
+          <UserRound />
+          Profile
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings">
-            <Settings />
-            Settings
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/settings")}>
+          <Settings />
+          Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action="/auth/signout" method="post">
