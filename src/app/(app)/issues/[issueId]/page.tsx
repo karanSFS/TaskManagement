@@ -1,0 +1,83 @@
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { Suspense } from "react"
+
+import { CommentSection } from "@/components/issues/comment-section"
+import { IssueEditor } from "@/components/issues/issue-editor"
+import { LabelEditor } from "@/components/issues/label-editor"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { getCurrentUser } from "@/lib/auth/session"
+import { formatProjectDate, issueKey } from "@/lib/projects/format"
+import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
+
+export const metadata = { title: "Issue" }
+
+export default function IssuePage({ params }: { params: Promise<{ issueId: string }> }) {
+  return (
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <IssueContent params={params} />
+    </Suspense>
+  )
+}
+
+async function IssueContent({ params }: { params: Promise<{ issueId: string }> }) {
+  const [{ issueId }, user] = await Promise.all([params, getCurrentUser()])
+  if (!user || !isUuid(issueId)) notFound()
+
+  const [issue, catalog] = await Promise.all([getIssue(issueId, user.id), getIssueCatalog()])
+  if (!issue) notFound()
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={`/projects/${issue.projectId}`} className="text-sm text-muted-foreground hover:underline">
+          {issue.projectName}
+        </Link>
+        <Badge variant="outline">{issueKey(issue.projectKey, issue.number)}</Badge>
+        <span className="text-xs text-muted-foreground">
+          Reported by {issue.reporterName} · {formatProjectDate(issue.createdAt)}
+        </span>
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-6">
+          <IssueEditor
+            issueId={issue.id}
+            types={catalog.types}
+            statuses={catalog.statuses}
+            priorities={catalog.priorities}
+            members={issue.members}
+            defaultValues={{
+              title: issue.title,
+              description: issue.description,
+              issueTypeId: issue.typeId,
+              statusId: issue.statusId,
+              priorityId: issue.priorityId,
+              assigneeId: issue.assigneeId,
+            }}
+          />
+          <CommentSection issueId={issue.id} currentUserId={user.id} comments={issue.comments} />
+        </div>
+        <div className="grid gap-4">
+          <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
+          <section className="grid gap-2">
+            <h2 className="text-sm font-medium">History</h2>
+            {issue.history.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet.</p> : null}
+            <ul className="grid gap-2">
+              {issue.history.map((entry) => (
+                <li key={entry.id} className="text-sm">
+                  <p>{entry.summary}</p>
+                  <p className="text-xs text-muted-foreground">{formatProjectDate(entry.createdAt)}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}

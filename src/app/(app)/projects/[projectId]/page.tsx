@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 
@@ -42,7 +43,12 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
         <Stat label="Created" value={formatProjectDate(project.createdAt)} />
       </dl>
       <section className="grid gap-2">
-        <h2 className="text-sm font-medium">Issues</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Issues</h2>
+          <Link href={`/issues/new?projectId=${project.id}`} className="text-sm font-medium text-primary hover:underline">
+            New issue
+          </Link>
+        </div>
         <p className="text-sm text-muted-foreground">
           {project.openIssueCount} open · {project.doneIssueCount} done · next number {issueKey(project.key, project.nextIssueNumber)}
         </p>
@@ -55,15 +61,17 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No issues yet. Creating and moving issues comes next.</p>
+          <p className="text-sm text-muted-foreground">No issues yet.</p>
         )}
         {project.issues.length > 0 ? (
           <ul className="divide-y rounded-lg border bg-card">
             {project.issues.slice(0, 8).map((issue) => (
-              <li key={issue.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <span className="font-medium text-muted-foreground">{issueKey(project.key, issue.number)}</span>
-                <span className="min-w-0 flex-1 truncate">{issue.title}</span>
-                <span className="text-xs text-muted-foreground">{issue.status}</span>
+              <li key={issue.id}>
+                <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
+                  <span className="font-medium text-muted-foreground">{issueKey(project.key, issue.number)}</span>
+                  <span className="min-w-0 flex-1 truncate">{issue.title}</span>
+                  <span className="text-xs text-muted-foreground">{issue.status}</span>
+                </Link>
               </li>
             ))}
           </ul>
