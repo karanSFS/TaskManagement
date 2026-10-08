@@ -2,9 +2,9 @@
 
 Ship work, not tickets.
 
-TaskForge is a project and issue manager for personal and small-team use. The workflow is familiar if you have used Jira. The interface, name, and visual system are TaskForge's own.
+TaskForge is a project and issue manager for personal and small-team use. The interface, name, and visual system are TaskForge's own.
 
-Phase 1 is the foundation: Next.js, Supabase local development, authentication, and the application shell. Projects, issues, the board, and sprints are not built yet.
+The living plan, including what is already built and what to build next, is in [PLAN.md](PLAN.md). Read that file before starting a new phase.
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ npx supabase db push --dry-run
 npx supabase db push
 ```
 
-Review the dry run before pushing. Phase 1 has no application tables yet, so there is nothing to push.
+Review the dry run before pushing. The hosted project is already linked. Do not reset it.
 
 ## Environment
 
@@ -104,7 +104,7 @@ On Vercel, set the same two public variables to the remote Supabase project URL 
 Keyboard shortcuts, ignored while typing in a field:
 
 - `/` opens page search
-- `C` opens create issue (the form arrives in Phase 4)
+- `C` opens create issue (`/issues/new`)
 - `⌘/Ctrl+B` collapses the sidebar
 
 ## Project layout
@@ -115,15 +115,16 @@ src/app/(app)           authenticated shell and section routes
 src/app/auth            confirm and sign-out routes
 src/components/ui       shadcn/ui
 src/lib/supabase        browser, server, and proxy clients
-supabase/migrations     versioned schema (empty in Phase 1)
+supabase/migrations     versioned schema
 supabase/seed.sql       local seed
-supabase/functions      edge functions (empty in Phase 1)
+supabase/functions      edge functions
+PLAN.md                 phase status and rules for continuing the project
 ```
 
 ## Deployment outline
 
 GitHub deploys the Next.js app on Vercel. Vercel talks to a remote Supabase project for Postgres, Auth, Storage, and Realtime. Production environment variables stay in Vercel. Local development uses the Supabase CLI and does not use production data.
 
-## Next phase
+## Continuing the project
 
-Phase 2 adds the database schema, relationships, indexes, row level security, seed data, and generated TypeScript types. Do not start that work until it is requested.
+Open [PLAN.md](PLAN.md). It records the finished phases, the database rules, and the next step. Do not start a later phase until it is requested.
