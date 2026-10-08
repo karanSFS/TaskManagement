@@ -60,7 +60,9 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
         <section className="grid max-w-xl gap-2 border-t pt-4">
           <h2 className="text-sm font-medium">{project.archivedAt ? "Restore" : "Archive"}</h2>
           <p className="text-sm text-muted-foreground">
-            Archived projects stay in the list, marked separately from active work.
+            {project.archivedAt
+              ? "Restoring the project lets members file new issues again."
+              : "Archived projects stay readable, but nobody can file new issues in them."}
           </p>
           <ArchiveProjectButton projectId={project.id} archived={Boolean(project.archivedAt)} />
         </section>

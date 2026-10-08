@@ -778,6 +778,14 @@ export type Database = {
         }
         Returns: string
       }
+      project_issue_counts: {
+        Args: never
+        Returns: {
+          done_count: number
+          open_count: number
+          project_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

@@ -28,10 +28,7 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
     notFound()
   }
 
-  const byStatus = new Map<string, number>()
-  for (const issue of project.issues) {
-    byStatus.set(issue.status, (byStatus.get(issue.status) ?? 0) + 1)
-  }
+  const totalIssues = project.openIssueCount + project.doneIssueCount
 
   return (
     <div className="grid gap-4">
@@ -44,28 +41,32 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
       </dl>
       <section className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Issues</h2>
-          <Link href={`/issues/new?projectId=${project.id}`} className="text-sm font-medium text-primary hover:underline">
-            New issue
-          </Link>
+          <h2 className="text-sm font-medium">Recent issues</h2>
+          <div className="flex items-center gap-3 text-sm font-medium">
+            {totalIssues > 0 ? (
+              <Link href={`/issues?projectId=${project.id}`} className="text-muted-foreground hover:underline">
+                View all
+              </Link>
+            ) : null}
+            {project.archivedAt ? null : (
+              <Link href={`/issues/new?projectId=${project.id}`} className="text-primary hover:underline">
+                New issue
+              </Link>
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {project.openIssueCount} open · {project.doneIssueCount} done · next number {issueKey(project.key, project.nextIssueNumber)}
         </p>
-        {byStatus.size > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {[...byStatus.entries()].map(([status, count]) => (
-              <li key={status} className="rounded-md border bg-card px-2 py-1 text-xs">
-                {status} · {count}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">No issues yet.</p>
-        )}
+        {project.archivedAt ? (
+          <p className="text-sm text-muted-foreground">
+            This project is archived. Restore it in settings to file new issues.
+          </p>
+        ) : null}
+        {project.issues.length === 0 ? <p className="text-sm text-muted-foreground">No issues yet.</p> : null}
         {project.issues.length > 0 ? (
           <ul className="divide-y rounded-lg border bg-card">
-            {project.issues.slice(0, 8).map((issue) => (
+            {project.issues.map((issue) => (
               <li key={issue.id}>
                 <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
                   <span className="font-medium text-muted-foreground">{issueKey(project.key, issue.number)}</span>

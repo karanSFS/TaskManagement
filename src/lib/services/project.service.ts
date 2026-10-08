@@ -48,6 +48,8 @@ export type ProjectDetail = ProjectSummary & {
   issues: ProjectIssue[]
 }
 
+const recentIssueLimit = 10
+
 type ProfileEmbed = { display_name: string } | { display_name: string }[] | null
 type StatusEmbed = { name: string; category: string } | { name: string; category: string }[] | null
 
@@ -88,8 +90,16 @@ function raiseProjectWriteError(message: string): never {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot manage members of this project")
   }
 
+  if (message.includes("Only an owner can remove another owner")) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can remove another owner.")
+  }
+
+  if (message.includes("Only an owner can change another owner")) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can change another owner's role.")
+  }
+
   if (message.includes("Only an owner")) {
-    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can add another owner")
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can add another owner.")
   }
 
   if (message.includes("Enter a valid email")) {
@@ -125,32 +135,30 @@ async function requireManager(projectId: string, userId: string, role: ProjectRo
   }
 }
 
+const getIssueCounts = cache(async () => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("project_issue_counts")
+  if (error) {
+    throw new DatabaseError("Could not load issue counts.")
+  }
+
+  return new Map((data ?? []).map((row) => [row.project_id, { open: row.open_count, done: row.done_count }]))
+})
+
 export const getProjects = cache(async (userId: string): Promise<ProjectSummary[]> => {
   const supabase = await createClient()
-  const [{ data: projects, error }, { data: issues, error: issueError }] = await Promise.all([
+  const [{ data: projects, error }, counts] = await Promise.all([
     supabase
       .from("projects")
       .select(
         "id, name, key, description, icon, lead_id, created_at, archived_at, lead:profiles!projects_lead_id_fkey(display_name), project_members(user_id, role)",
       )
       .order("name"),
-    supabase.from("issues").select("project_id, issue_statuses!issues_status_id_fkey(category)"),
+    getIssueCounts(),
   ])
 
-  if (error || issueError) {
+  if (error) {
     throw new DatabaseError("Could not load projects.")
-  }
-
-  const counts = new Map<string, { open: number; done: number }>()
-  for (const issue of issues ?? []) {
-    const status = one(issue.issue_statuses as StatusEmbed)
-    const current = counts.get(issue.project_id) ?? { open: 0, done: 0 }
-    if (status?.category === "done") {
-      current.done += 1
-    } else {
-      current.open += 1
-    }
-    counts.set(issue.project_id, current)
   }
 
   return (projects ?? []).map((project) => {
@@ -195,15 +203,21 @@ export const getProject = cache(async (projectId: string, userId: string): Promi
     return null
   }
 
-  const { data: issues, error: issueError } = await supabase
-    .from("issues")
-    .select("id, issue_number, title, updated_at, issue_statuses!issues_status_id_fkey(name, category)")
-    .eq("project_id", projectId)
-    .order("updated_at", { ascending: false })
+  const [{ data: issues, error: issueError }, counts] = await Promise.all([
+    supabase
+      .from("issues")
+      .select("id, issue_number, title, updated_at, issue_statuses!issues_status_id_fkey(name, category)")
+      .eq("project_id", projectId)
+      .order("updated_at", { ascending: false })
+      .limit(recentIssueLimit),
+    getIssueCounts(),
+  ])
 
   if (issueError) {
     throw new DatabaseError("Could not load this project.")
   }
+
+  const tally = counts.get(project.id) ?? { open: 0, done: 0 }
 
   const members = (project.project_members ?? []).map((member) => {
     const profile = one(member.profile as ProfileEmbed)
@@ -241,8 +255,8 @@ export const getProject = cache(async (projectId: string, userId: string): Promi
     nextIssueNumber: project.next_issue_number,
     role: asRole(mine?.role ?? "member"),
     memberCount: members.length,
-    openIssueCount: mappedIssues.filter((issue) => issue.category !== "done").length,
-    doneIssueCount: mappedIssues.filter((issue) => issue.category === "done").length,
+    openIssueCount: tally.open,
+    doneIssueCount: tally.done,
     members: members.sort((a, b) => a.name.localeCompare(b.name)),
     issues: mappedIssues,
   }

@@ -2,6 +2,8 @@ import { z } from "zod"
 
 const assignee = z.union([z.uuid(), z.literal("")])
 
+const dueDate = z.string().refine((value) => value === "" || isIsoDate(value), "Enter a valid date")
+
 export const createIssueSchema = z.object({
   projectId: z.uuid("Choose a project"),
   title: z.string().trim().min(1, "Enter a title").max(200, "Title is too long"),
@@ -10,11 +12,10 @@ export const createIssueSchema = z.object({
   statusId: z.uuid("Choose a status"),
   priorityId: z.uuid("Choose a priority"),
   assigneeId: assignee,
+  dueDate,
 })
 
-export const updateIssueSchema = createIssueSchema.omit({ projectId: true }).extend({
-  dueDate: z.string().refine((value) => value === "" || isIsoDate(value), "Enter a valid date"),
-})
+export const updateIssueSchema = createIssueSchema.omit({ projectId: true })
 
 export const commentSchema = z.object({
   body: z.string().trim().min(1, "Write a comment").max(8000, "Comment is too long"),

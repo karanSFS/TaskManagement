@@ -4,7 +4,15 @@ Ship work, not tickets.
 
 TaskForge is a project and issue manager for personal and small-team use. The interface, name, and visual system are TaskForge's own.
 
-The living plan, including what is already built and what to build next, is in [PLAN.md](PLAN.md). Read that file before starting a new phase.
+The living plan is [PLAN.md](PLAN.md). Read it before starting a phase. When a phase is finished, update both `PLAN.md` and this README.
+
+## Current progress
+
+Phases 1–3 are done: foundation, the hosted database, and projects. Phase 4 covers issues and My Work (`/my-work`). Home shows live project and assignment counts. Subtasks and issue links are still open inside Phase 4.
+
+**Next phase:** Phase 5, the board at `/board`. Do not start it until it is requested.
+
+The app in `.env.local` talks to the hosted Supabase project, not the local Docker stack. Do not replace those values with `127.0.0.1` unless you mean to develop against a local database. Never reset the hosted database. Schema changes belong in `supabase/migrations/` and go to the hosted project with `npx supabase db push --dry-run` first.
 
 ## Prerequisites
 
@@ -13,7 +21,9 @@ The living plan, including what is already built and what to build next, is in [
 - Docker Desktop, OrbStack, or Colima (required for local Supabase)
 - Git
 
-## Local setup
+## Optional local Supabase
+
+Local Supabase is optional. The checked-in app is configured for the hosted project. Use this only when you want a separate local database.
 
 ```bash
 npm install
@@ -111,9 +121,10 @@ Keyboard shortcuts, ignored while typing in a field:
 
 ```text
 src/app/(auth)          sign in, sign up, password reset
-src/app/(app)           authenticated shell and section routes
+src/app/(app)           authenticated shell, projects, issues, my work
 src/app/auth            confirm and sign-out routes
 src/components/ui       shadcn/ui
+src/lib/services        project, issue, and profile services
 src/lib/supabase        browser, server, and proxy clients
 supabase/migrations     versioned schema
 supabase/seed.sql       local seed
@@ -127,4 +138,4 @@ GitHub deploys the Next.js app on Vercel. Vercel talks to a remote Supabase proj
 
 ## Continuing the project
 
-Open [PLAN.md](PLAN.md). It records the finished phases, the database rules, and the next step. Do not start a later phase until it is requested.
+Open [PLAN.md](PLAN.md). It records the finished phases, the database rules, and the next step. Do not start a later phase until it is requested. Finish a phase by updating `PLAN.md` and this README in the same change.

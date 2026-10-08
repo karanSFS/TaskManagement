@@ -11,6 +11,7 @@ import {
   addIssueComment,
   addIssueLabel,
   createIssue as createIssueRecord,
+  deleteIssue as deleteIssueRecord,
   deleteIssueComment,
   removeIssueLabel,
   updateIssue as updateIssueRecord,
@@ -20,6 +21,7 @@ import { commentSchema, createIssueSchema, labelNameSchema, updateIssueSchema } 
 function refreshIssue(issueId: string, projectId: string | null) {
   revalidatePath("/issues")
   revalidatePath("/my-work")
+  revalidatePath("/dashboard")
   revalidatePath(`/issues/${issueId}`)
   revalidatePath("/projects")
   if (projectId) revalidatePath(`/projects/${projectId}`)
@@ -32,7 +34,7 @@ function failure(error: unknown, operation: string, userId?: string, resourceId?
 
 export async function createIssue(values: unknown): Promise<ActionState> {
   const parsed = createIssueSchema.safeParse(values)
-  if (!parsed.success) return { error: "Check the issue title and project." }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the issue title and project." }
 
   const user = await getCurrentUser()
   if (!user) return { error: "Sign in to create an issue." }
@@ -48,7 +50,7 @@ export async function createIssue(values: unknown): Promise<ActionState> {
 
 export async function updateIssue(issueId: string, values: unknown): Promise<ActionState> {
   const parsed = updateIssueSchema.safeParse(values)
-  if (!parsed.success) return { error: "Check the issue details and try again." }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the issue details and try again." }
 
   const user = await getCurrentUser()
   if (!user) return { error: "Sign in to update this issue." }
@@ -59,6 +61,19 @@ export async function updateIssue(issueId: string, values: unknown): Promise<Act
     return { success: "Issue saved." }
   } catch (error) {
     return failure(error, "updateIssue", user.id, issueId)
+  }
+}
+
+export async function deleteIssue(issueId: string): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to delete this issue." }
+
+  try {
+    const projectId = await deleteIssueRecord(issueId)
+    refreshIssue(issueId, projectId)
+    redirect(projectId ? `/projects/${projectId}` : "/issues")
+  } catch (error) {
+    return failure(error, "deleteIssue", user.id, issueId)
   }
 }
 

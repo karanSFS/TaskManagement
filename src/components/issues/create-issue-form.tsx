@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTransition } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ const fieldClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 
 type Option = { id: string; name: string }
+type ProjectOption = Option & { members: Option[] }
 
 export function CreateIssueForm({
   projects,
@@ -24,7 +25,7 @@ export function CreateIssueForm({
   priorities,
   defaultProjectId,
 }: {
-  projects: Option[]
+  projects: ProjectOption[]
   types: Option[]
   statuses: Option[]
   priorities: Option[]
@@ -41,8 +42,11 @@ export function CreateIssueForm({
       statusId: statuses.find((status) => status.name === "To Do")?.id ?? statuses[0]?.id ?? "",
       priorityId: priorities.find((priority) => priority.name === "Medium")?.id ?? priorities[0]?.id ?? "",
       assigneeId: "",
+      dueDate: "",
     },
   })
+  const projectId = useWatch({ control: form.control, name: "projectId" })
+  const members = projects.find((project) => project.id === projectId)?.members ?? []
 
   return (
     <Form {...form}>
@@ -63,7 +67,14 @@ export function CreateIssueForm({
             <FormItem>
               <FormLabel>Project</FormLabel>
               <FormControl>
-                <select className={fieldClass} {...field}>
+                <select
+                  className={fieldClass}
+                  {...field}
+                  onChange={(event) => {
+                    field.onChange(event)
+                    form.setValue("assigneeId", "")
+                  }}
+                >
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
                       {project.name}
@@ -82,7 +93,7 @@ export function CreateIssueForm({
             <FormItem>
               <FormLabel>Title</FormLabel>
               <FormControl>
-                <Input placeholder="Fix client notification" {...field} />
+                <Input placeholder="Fix client notification" autoFocus {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -105,6 +116,41 @@ export function CreateIssueForm({
           <Choice name="issueTypeId" label="Type" options={types} form={form} />
           <Choice name="statusId" label="Status" options={statuses} form={form} />
           <Choice name="priorityId" label="Priority" options={priorities} form={form} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="assigneeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assignee</FormLabel>
+                <FormControl>
+                  <select className={fieldClass} {...field}>
+                    <option value="">Unassigned</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Due date</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <Button type="submit" disabled={pending} className="w-fit">
           {pending ? "Creating issue…" : "Create issue"}

@@ -2,7 +2,7 @@
 
 Ship work, not tickets.
 
-This file is the source of truth for continuing TaskForge in another IDE, machine, or chat. Read it before writing code. Update the status section when a phase is finished. Do not start the next phase until it is requested.
+This file is the source of truth for continuing TaskForge in another IDE, machine, or chat. Read it before writing code. When a phase is finished, update this file and `README.md` in the same change. Do not start the next phase until it is requested.
 
 The visual system, name, and interface are TaskForge's own. The workflow can feel familiar. Do not copy another product's branding, layout, or copy.
 
@@ -21,10 +21,12 @@ Last updated: 2026-10-08.
 | 6 | Backlog and sprints | Not started |
 | 7 | Search and filters | Not started. Page jump exists. Issue search does not. |
 | 8 | Notifications and storage | Not started. The `attachments` bucket and notification trigger exist. |
-| 9 | Dashboard and reports | Not started. Home is a greeting and empty widgets. |
+| 9 | Dashboard and reports | Home shows real project and assignment counts. Reports and charts are not built. |
 | 10 | Production polish | Not started |
 
 **Next step:** Phase 5, the board (`/board`). Columns, drag and drop, and status changes through the issue service. Do not start sprints in the same step.
+
+A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Subtasks, issue links, the board, sprints, search, notifications, and reports are still later phases.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -248,4 +250,5 @@ src/types/database.types.ts    generated types
 5. Read this file. Implement only the next requested phase.
 6. Run `npm run typecheck` and `npm run lint` before calling the work done.
 7. For UI changes, click through the flow in the browser.
-8. Commit only when asked. Never commit `.env.local`.
+8. Update `PLAN.md` and `README.md` before calling the phase done.
+9. Commit only when asked. Never commit `.env.local`.

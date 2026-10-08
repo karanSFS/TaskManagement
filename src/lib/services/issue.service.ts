@@ -5,6 +5,7 @@ import { AuthenticationError } from "@/lib/errors/authentication-error"
 import { AuthorizationError } from "@/lib/errors/authorization-error"
 import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
+import { formatDueDate } from "@/lib/projects/format"
 import { createClient } from "@/lib/supabase/server"
 import type { CreateIssueValues, UpdateIssueValues } from "@/lib/validations/issue"
 
@@ -66,6 +67,7 @@ export type IssueHistoryEntry = {
   id: string
   field: string
   summary: string
+  actorName: string
   createdAt: string
 }
 
@@ -85,6 +87,8 @@ export type IssueDetail = {
   reporterName: string
   createdAt: string
   updatedAt: string
+  projectArchived: boolean
+  canDelete: boolean
   labels: IssueLabel[]
   projectLabels: IssueLabel[]
   members: { id: string; name: string }[]
@@ -102,6 +106,15 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 }
 
 function raiseIssueWriteError(message: string): never {
+  if (message.includes("Archived projects cannot take new issues")) {
+    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before filing new issues.", 422)
+  }
+  if (message.includes("Label and issue must belong to the same project")) {
+    throw new AppError("INVALID_LABEL", "That label belongs to a different project.", 422)
+  }
+  if (message.includes("labels_project_id_name_key") || message.includes("duplicate key")) {
+    throw new AppError("DUPLICATE_LABEL", "That label already exists in this project.", 409)
+  }
   if (message.includes("cannot move between projects") || message.includes("numbers cannot change")) {
     throw new AppError("INVALID_ISSUE", "That change is not allowed.", 422)
   }
@@ -144,20 +157,56 @@ export const getIssueCatalog = cache(async (): Promise<IssueCatalog> => {
   }
 })
 
-export async function listWritableProjects(userId: string) {
+export type WritableProject = {
+  id: string
+  name: string
+  key: string
+  members: { id: string; name: string }[]
+}
+
+export async function listWritableProjects(userId: string): Promise<{ active: WritableProject[]; archivedCount: number }> {
   void userId
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, key")
-    .is("archived_at", null)
+    .select("id, name, key, archived_at, project_members(user_id, profile:profiles!project_members_user_id_fkey(display_name))")
     .order("name")
 
+  if (error) throw new DatabaseError("Could not load projects.")
+
+  const rows = data ?? []
+  return {
+    archivedCount: rows.filter((project) => project.archived_at).length,
+    active: rows
+      .filter((project) => !project.archived_at)
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        key: project.key,
+        members: (project.project_members ?? [])
+          .map((member) => ({
+            id: member.user_id,
+            name: one(member.profile as NameEmbed)?.display_name ?? "Member",
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      })),
+  }
+}
+
+export async function listIssueProjects(userId: string) {
+  void userId
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("projects").select("id, name, key").order("name")
   if (error) throw new DatabaseError("Could not load projects.")
   return data ?? []
 }
 
-export async function listIssues(userId: string, page: number, query: string): Promise<IssueList> {
+export async function listIssues(
+  userId: string,
+  page: number,
+  query: string,
+  projectId?: string,
+): Promise<IssueList> {
   void userId
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const from = (safePage - 1) * pageSize
@@ -173,6 +222,7 @@ export async function listIssues(userId: string, page: number, query: string): P
 
   const needle = query.trim().replace(/[%_\\]/g, "")
   if (needle) request = request.ilike("title", `%${needle}%`)
+  if (projectId) request = request.eq("project_id", projectId)
 
   const { data, error, count } = await request
   if (error) throw new DatabaseError("Could not load issues.")
@@ -285,12 +335,11 @@ function toMyWorkList(rows: unknown[] | null, total: number | null): MyWorkList 
 }
 
 export async function getIssue(issueId: string, userId: string): Promise<IssueDetail | null> {
-  void userId
   const supabase = await createClient()
   const { data: issue, error } = await supabase
     .from("issues")
     .select(
-      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
+      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name, archived_at), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
     )
     .eq("id", issueId)
     .maybeSingle()
@@ -304,17 +353,17 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     supabase.from("labels").select("id, name, color").eq("project_id", issue.project_id).order("name"),
     supabase
       .from("project_members")
-      .select("user_id, profile:profiles!project_members_user_id_fkey(display_name)")
+      .select("user_id, role, profile:profiles!project_members_user_id_fkey(display_name)")
       .eq("project_id", issue.project_id),
     supabase
       .from("comments")
       .select("id, body, created_at, author_id, author:profiles!comments_author_id_fkey(display_name)")
       .eq("issue_id", issueId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(50),
     supabase
       .from("issue_history")
-      .select("id, field, old_value, new_value, created_at")
+      .select("id, field, new_value, created_at, actor_id")
       .eq("issue_id", issueId)
       .order("created_at", { ascending: false })
       .limit(40),
@@ -324,7 +373,8 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     throw new DatabaseError("Could not load this issue.")
   }
 
-  const project = one(issue.project as { id: string; key: string; name: string } | { id: string; key: string; name: string }[] | null)
+  type ProjectEmbed = { id: string; key: string; name: string; archived_at: string | null }
+  const project = one(issue.project as ProjectEmbed | ProjectEmbed[] | null)
   const names = new Map<string, string>()
   for (const status of catalog.statuses) names.set(status.id, status.name)
   for (const priority of catalog.priorities) names.set(priority.id, priority.name)
@@ -334,6 +384,8 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     names.set(member.user_id, name)
     return { id: member.user_id, name }
   })
+  const myRole = (members.data ?? []).find((member) => member.user_id === userId)?.role
+  const actorNames = new Map(memberRows.map((member) => [member.id, member.name]))
 
   return {
     id: issue.id,
@@ -351,13 +403,15 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     reporterName: one(issue.reporter as NameEmbed)?.display_name ?? "Unknown",
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
+    projectArchived: Boolean(project?.archived_at),
+    canDelete: issue.reporter_id === userId || myRole === "owner" || myRole === "admin",
     labels: (labels.data ?? []).flatMap((row) => {
       const label = one(row.label as IssueLabel | IssueLabel[] | null)
       return label ? [label] : []
     }),
     projectLabels: projectLabels.data ?? [],
     members: memberRows.sort((a, b) => a.name.localeCompare(b.name)),
-    comments: (comments.data ?? []).map((comment) => ({
+    comments: (comments.data ?? []).toReversed().map((comment) => ({
       id: comment.id,
       body: comment.body,
       createdAt: comment.created_at,
@@ -368,19 +422,20 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
       id: entry.id,
       field: entry.field,
       createdAt: entry.created_at,
-      summary: historySummary(entry.field, entry.old_value, entry.new_value, names),
+      summary: historySummary(entry.field, entry.new_value, names),
+      actorName: entry.actor_id ? (actorNames.get(entry.actor_id) ?? "Former member") : "TaskForge",
     })),
   }
 }
 
-function historySummary(field: string, oldValue: string | null, newValue: string | null, names: Map<string, string>) {
-  const next = newValue ? (names.get(newValue) ?? newValue) : "none"
+function historySummary(field: string, newValue: string | null, names: Map<string, string>) {
+  const next = newValue ? (names.get(newValue) ?? "an unknown value") : "none"
   if (field === "created") return `Created “${newValue ?? "issue"}”`
   if (field === "title") return `Title changed to “${newValue ?? ""}”`
   if (field === "status") return `Status set to ${next}`
   if (field === "priority") return `Priority set to ${next}`
-  if (field === "assignee") return newValue ? `Assigned to ${next}` : "Assignee cleared"
-  if (field === "due_date") return `Due date set to ${next}`
+  if (field === "assignee") return newValue ? `Assigned to ${names.get(newValue) ?? "a former member"}` : "Assignee cleared"
+  if (field === "due_date") return newValue ? `Due date set to ${formatDueDate(newValue)}` : "Due date cleared"
   if (field === "sprint") return newValue ? "Moved to a sprint" : "Removed from the sprint"
   return `${field} updated`
 }
@@ -399,6 +454,7 @@ export async function createIssue(userId: string, input: CreateIssueValues) {
       status_id: input.statusId,
       priority_id: input.priorityId,
       assignee_id: assigneeId,
+      due_date: input.dueDate || null,
       reporter_id: userId,
       // The numbering trigger replaces this before the row is stored.
       issue_number: 1,
@@ -409,6 +465,18 @@ export async function createIssue(userId: string, input: CreateIssueValues) {
   if (error) raiseIssueWriteError(error.message)
   if (!data) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have access to that project.")
   return data
+}
+
+export async function deleteIssue(issueId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("issues").delete().eq("id", issueId).select("id, project_id")
+
+  if (error) raiseIssueWriteError(error.message)
+  if (!data?.length || !data[0]) {
+    throw new AuthorizationError("ISSUE_ACCESS_DENIED", "Only the reporter or a project owner or admin can delete this issue.")
+  }
+
+  return data[0].project_id
 }
 
 export async function updateIssue(userId: string, issueId: string, input: UpdateIssueValues) {

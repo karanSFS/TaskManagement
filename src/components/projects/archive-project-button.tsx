@@ -15,6 +15,9 @@ export function ArchiveProjectButton({ projectId, archived }: { projectId: strin
       variant={archived ? "outline" : "destructive"}
       disabled={pending}
       onClick={() => {
+        if (!archived && !window.confirm("Archive this project? Nobody can file new issues until it is restored.")) {
+          return
+        }
         startTransition(async () => {
           const result = await setProjectArchived(projectId, !archived)
           if (result?.error) {

@@ -35,6 +35,31 @@ async function siteOrigin() {
   return `${proto}://${host}`
 }
 
+function authMessage(error: { code?: string; message: string }, fallback: string) {
+  const code = error.code ?? ""
+  const message = error.message.toLowerCase()
+
+  if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
+    return "That email and password do not match."
+  }
+  if (code === "email_not_confirmed" || message.includes("email not confirmed")) {
+    return "Confirm your email first. Check your inbox for the link."
+  }
+  if (code === "user_already_exists" || message.includes("already registered")) {
+    return "An account already uses that email. Sign in instead."
+  }
+  if (code === "weak_password" || message.includes("password should")) {
+    return "Choose a stronger password with at least 8 characters."
+  }
+  if (code === "same_password" || message.includes("different from the old")) {
+    return "Choose a password you have not used for this account."
+  }
+  if (code.includes("rate_limit") || message.includes("rate limit") || message.includes("security purposes")) {
+    return "Too many attempts. Wait a minute and try again."
+  }
+  return fallback
+}
+
 export async function signIn(nextPath: string, values: LoginValues): Promise<ActionState> {
   const parsed = loginSchema.safeParse(values)
   if (!parsed.success) {
@@ -44,7 +69,7 @@ export async function signIn(nextPath: string, values: LoginValues): Promise<Act
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) {
-    return { error: error.message }
+    return { error: authMessage(error, "Could not sign in. Try again.") }
   }
 
   redirect(safeNextPath(nextPath))
@@ -68,15 +93,20 @@ export async function signUp(values: SignupValues): Promise<ActionState> {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: authMessage(error, "Could not create the account. Try again.") }
   }
 
   if (data.session) {
     redirect("/dashboard")
   }
 
+  // An existing confirmed email comes back as a user with no identities.
+  if (data.user && data.user.identities?.length === 0) {
+    return { error: "An account already uses that email. Sign in instead." }
+  }
+
   return {
-    success: "Check your inbox and confirm your email before signing in. Local mail is in Mailpit.",
+    success: "Check your inbox and open the confirmation link, then sign in.",
   }
 }
 
@@ -93,7 +123,7 @@ export async function requestPasswordReset(values: ForgotPasswordValues): Promis
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: authMessage(error, "Could not send the reset link. Try again.") }
   }
 
   return {
@@ -118,7 +148,7 @@ export async function resetPassword(values: ResetPasswordValues): Promise<Action
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) {
-    return { error: error.message }
+    return { error: authMessage(error, "Could not update the password. Try again.") }
   }
 
   redirect("/dashboard")

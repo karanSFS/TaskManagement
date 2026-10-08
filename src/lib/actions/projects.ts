@@ -28,6 +28,10 @@ function projectPaths(projectId: string) {
   revalidatePath(`/projects/${projectId}`)
   revalidatePath(`/projects/${projectId}/members`)
   revalidatePath(`/projects/${projectId}/settings`)
+  revalidatePath("/issues")
+  revalidatePath("/issues/new")
+  revalidatePath("/my-work")
+  revalidatePath("/dashboard")
 }
 
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {

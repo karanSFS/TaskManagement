@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { LogOut, Settings, UserRound } from "lucide-react"
 
+import { signOut } from "@/lib/actions/auth"
 import { userInitials } from "@/lib/auth/user"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -49,14 +50,10 @@ export function UserMenu({ user }: UserMenuProps) {
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <form action="/auth/signout" method="post">
-          <DropdownMenuItem variant="destructive" asChild>
-            <button type="submit">
-              <LogOut />
-              Log out
-            </button>
-          </DropdownMenuItem>
-        </form>
+        <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
+          <LogOut />
+          Log out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
 import { CommentSection } from "@/components/issues/comment-section"
+import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
 import { IssueEditor } from "@/components/issues/issue-editor"
 import { LabelEditor } from "@/components/issues/label-editor"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +39,14 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
         <span className="text-xs text-muted-foreground">
           Reported by {issue.reporterName} · {formatProjectDate(issue.createdAt)}
         </span>
+        {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
+        {issue.canDelete ? (
+          <div className="ml-auto">
+            <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} />
+          </div>
+        ) : null}
       </div>
+      <h1 className="text-lg font-semibold tracking-tight">{issue.title}</h1>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="grid gap-6">
           <IssueEditor
@@ -68,7 +76,9 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
               {issue.history.map((entry) => (
                 <li key={entry.id} className="text-sm">
                   <p>{entry.summary}</p>
-                  <p className="text-xs text-muted-foreground">{formatProjectDate(entry.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {entry.actorName} · {formatProjectDate(entry.createdAt)}
+                  </p>
                 </li>
               ))}
             </ul>

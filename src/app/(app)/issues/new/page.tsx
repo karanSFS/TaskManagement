@@ -26,25 +26,40 @@ async function NewIssueContent({ searchParams }: { searchParams: Promise<{ proje
   const [params, user] = await Promise.all([searchParams, getCurrentUser()])
   if (!user) return null
 
-  const [projects, catalog] = await Promise.all([listWritableProjects(user.id), getIssueCatalog()])
-  if (projects.length === 0) {
+  const [{ active, archivedCount }, catalog] = await Promise.all([listWritableProjects(user.id), getIssueCatalog()])
+  if (active.length === 0) {
     return (
       <div className="grid gap-3">
-        <PageHeader title="New issue" description="Create a project before filing the first issue." />
-        <Button asChild className="w-fit">
-          <Link href="/projects/new">New project</Link>
-        </Button>
+        <PageHeader
+          title="New issue"
+          description={
+            archivedCount > 0
+              ? "Your projects are archived. Restore one in its settings, or create a new project, to file an issue."
+              : "Create a project before filing the first issue."
+          }
+        />
+        <div className="flex gap-2">
+          <Button asChild className="w-fit">
+            <Link href="/projects/new">New project</Link>
+          </Button>
+          {archivedCount > 0 ? (
+            <Button asChild variant="outline" className="w-fit">
+              <Link href="/projects">View projects</Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
     )
   }
 
-  const defaultProjectId = projects.some((project) => project.id === params.projectId) ? params.projectId! : projects[0].id
+  const requested = active.find((project) => project.id === params.projectId)
+  const defaultProjectId = requested?.id ?? active[0].id
 
   return (
     <div className="grid gap-4">
       <PageHeader title="New issue" description="The project key and the next number are assigned when you save." />
       <CreateIssueForm
-        projects={projects}
+        projects={active}
         types={catalog.types}
         statuses={catalog.statuses}
         priorities={catalog.priorities}

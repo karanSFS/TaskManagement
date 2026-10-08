@@ -47,7 +47,7 @@ export function MemberManager({
             projectId={projectId}
             member={member}
             roles={roles}
-            canManage={canManage}
+            canManage={canManage && (actorRole === "owner" || member.role !== "owner")}
             isLastOwner={member.role === "owner" && ownerCount === 1}
           />
         ))}
@@ -175,6 +175,12 @@ function MemberItem({
           variant="ghost"
           disabled={pending}
           onClick={() => {
+            const question = member.isYou
+              ? "Leave this project? You will lose access to its issues."
+              : `Remove ${member.name}? Their issues in this project become unassigned.`
+            if (!window.confirm(question)) {
+              return
+            }
             startTransition(async () => {
               const result = await removeProjectMember(projectId, member.id)
               if (result?.error) {

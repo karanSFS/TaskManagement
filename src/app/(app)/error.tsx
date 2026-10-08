@@ -18,7 +18,7 @@ export default function AppError({
   return (
     <div className="rounded-lg border bg-card px-4 py-5">
       <p className="text-sm font-medium">This page failed to load</p>
-      <p className="mt-1 text-sm text-muted-foreground">Try again. If it keeps failing, the session or local Supabase may be down.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Try again. If it keeps failing, sign out and back in, or check your connection.</p>
       <Button className="mt-3" size="sm" variant="outline" onClick={reset}>
         Try again
       </Button>
