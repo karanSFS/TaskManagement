@@ -1,5 +1,14 @@
 import type { ProjectRole } from "@/lib/validations/project"
 
+export function formatDueDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number)
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)))
+}
+
 export function formatProjectDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",

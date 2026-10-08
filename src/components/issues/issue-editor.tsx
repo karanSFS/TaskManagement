@@ -104,6 +104,19 @@ export function IssueEditor({
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Due date</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <Button type="submit" disabled={pending} className="w-fit">
           {pending ? "Saving issue…" : "Save issue"}

@@ -54,6 +54,7 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
               statusId: issue.statusId,
               priorityId: issue.priorityId,
               assigneeId: issue.assigneeId,
+              dueDate: issue.dueDate,
             }}
           />
           <CommentSection issueId={issue.id} currentUserId={user.id} comments={issue.comments} />

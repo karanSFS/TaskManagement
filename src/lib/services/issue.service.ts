@@ -1,6 +1,7 @@
 import { cache } from "react"
 
 import { AppError } from "@/lib/errors/app-error"
+import { AuthenticationError } from "@/lib/errors/authentication-error"
 import { AuthorizationError } from "@/lib/errors/authorization-error"
 import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
@@ -29,6 +30,19 @@ export type IssueListItem = {
   priority: string
   assigneeName: string | null
   updatedAt: string
+}
+
+export type MyWorkItem = IssueListItem & { dueDate: string | null }
+
+export type MyWorkList = {
+  items: MyWorkItem[]
+  total: number
+}
+
+export type MyWork = {
+  assigned: MyWorkList
+  reported: MyWorkList
+  dueSoon: MyWorkList
 }
 
 export type IssueList = {
@@ -67,6 +81,7 @@ export type IssueDetail = {
   statusId: string
   priorityId: string
   assigneeId: string
+  dueDate: string
   reporterName: string
   createdAt: string
   updatedAt: string
@@ -186,13 +201,96 @@ export async function listIssues(userId: string, page: number, query: string): P
   }
 }
 
+const myWorkSelect =
+  "id, issue_number, title, updated_at, due_date, project:projects!issues_project_id_fkey(key, name), issue_statuses!issues_status_id_fkey(name), priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name)"
+
+const myWorkLimit = 20
+
+export async function listMyWork(userId: string): Promise<MyWork> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) {
+    throw new AuthenticationError("Sign in to see your work.")
+  }
+  const catalog = await getIssueCatalog()
+  const openStatusIds = catalog.statuses.filter((status) => status.category !== "done").map((status) => status.id)
+  if (openStatusIds.length === 0) {
+    const empty = { items: [], total: 0 }
+    return { assigned: empty, reported: empty, dueSoon: empty }
+  }
+
+  const horizon = isoDate(7)
+  const supabase = await createClient()
+  const openIssues = () =>
+    supabase.from("issues").select(myWorkSelect, { count: "exact" }).in("status_id", openStatusIds).limit(myWorkLimit)
+
+  const [assigned, reported, dueSoon] = await Promise.all([
+    openIssues().eq("assignee_id", userId).order("updated_at", { ascending: false }),
+    openIssues().eq("reporter_id", userId).order("updated_at", { ascending: false }),
+    openIssues()
+      .or(`assignee_id.eq.${userId},reporter_id.eq.${userId}`)
+      .not("due_date", "is", null)
+      .lte("due_date", horizon)
+      .order("due_date", { ascending: true }),
+  ])
+
+  if (assigned.error || reported.error || dueSoon.error) {
+    throw new DatabaseError("Could not load your work.")
+  }
+
+  return {
+    assigned: toMyWorkList(assigned.data, assigned.count),
+    reported: toMyWorkList(reported.data, reported.count),
+    dueSoon: toMyWorkList(dueSoon.data, dueSoon.count),
+  }
+}
+
+function isoDate(offsetDays: number) {
+  const date = new Date()
+  date.setUTCDate(date.getUTCDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+function toMyWorkList(rows: unknown[] | null, total: number | null): MyWorkList {
+  return {
+    total: total ?? 0,
+    items: (rows ?? []).map((row) => {
+      const issue = row as {
+        id: string
+        issue_number: number
+        title: string
+        updated_at: string
+        due_date: string | null
+        project: { key: string; name: string } | { key: string; name: string }[] | null
+        issue_statuses: NamedEmbed
+        priorities: NamedEmbed
+        assignee: NameEmbed
+      }
+      const project = one(issue.project)
+      const status = one(issue.issue_statuses)
+      const priority = one(issue.priorities)
+      const assignee = one(issue.assignee)
+      return {
+        id: issue.id,
+        number: issue.issue_number,
+        title: issue.title,
+        projectKey: project?.key ?? "ISSUE",
+        projectName: project?.name ?? "Project",
+        status: status?.name ?? "Unknown",
+        priority: priority?.name ?? "Unknown",
+        assigneeName: assignee?.display_name ?? null,
+        updatedAt: issue.updated_at,
+        dueDate: issue.due_date,
+      }
+    }),
+  }
+}
+
 export async function getIssue(issueId: string, userId: string): Promise<IssueDetail | null> {
   void userId
   const supabase = await createClient()
   const { data: issue, error } = await supabase
     .from("issues")
     .select(
-      "id, issue_number, title, description, created_at, updated_at, project_id, assignee_id, reporter_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
+      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
     )
     .eq("id", issueId)
     .maybeSingle()
@@ -249,6 +347,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     statusId: issue.status_id,
     priorityId: issue.priority_id,
     assigneeId: issue.assignee_id ?? "",
+    dueDate: issue.due_date ?? "",
     reporterName: one(issue.reporter as NameEmbed)?.display_name ?? "Unknown",
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
@@ -327,7 +426,7 @@ export async function updateIssue(userId: string, issueId: string, input: Update
   const assigneeId = input.assigneeId || null
   await assertAssignee(existing.project_id, assigneeId)
 
-  const { data, error } = await supabase
+    const { data, error } = await supabase
     .from("issues")
     .update({
       title: input.title,
@@ -336,6 +435,7 @@ export async function updateIssue(userId: string, issueId: string, input: Update
       status_id: input.statusId,
       priority_id: input.priorityId,
       assignee_id: assigneeId,
+      due_date: input.dueDate || null,
     })
     .eq("id", issueId)
     .select("id, project_id")

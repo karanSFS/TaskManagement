@@ -19,6 +19,7 @@ import { commentSchema, createIssueSchema, labelNameSchema, updateIssueSchema } 
 
 function refreshIssue(issueId: string, projectId: string | null) {
   revalidatePath("/issues")
+  revalidatePath("/my-work")
   revalidatePath(`/issues/${issueId}`)
   revalidatePath("/projects")
   if (projectId) revalidatePath(`/projects/${projectId}`)

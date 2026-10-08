@@ -16,7 +16,7 @@ Last updated: 2026-10-08.
 | 2 | Database | Done, applied to the hosted project |
 | 3 | Projects | Done |
 | — | Shared service layer | Done |
-| 4 | Issues | Mostly done. My Work is still a placeholder. Subtasks and issue links are not built. |
+| 4 | Issues | Mostly done. My Work is done. Subtasks and issue links are not built. |
 | 5 | Kanban | Not started |
 | 6 | Backlog and sprints | Not started |
 | 7 | Search and filters | Not started. Page jump exists. Issue search does not. |
@@ -24,7 +24,7 @@ Last updated: 2026-10-08.
 | 9 | Dashboard and reports | Not started. Home is a greeting and empty widgets. |
 | 10 | Production polish | Not started |
 
-**Next step:** My Work (`/my-work`). Show issues assigned to the signed-in user, issues they reported, and issues due soon. Reuse the issue service. No new tables. Do not start the board in the same step.
+**Next step:** Phase 5, the board (`/board`). Columns, drag and drop, and status changes through the issue service. Do not start sprints in the same step.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -170,31 +170,24 @@ Profile name is `profiles.display_name`. Saving the profile updates that row and
 
 Routes: `/issues`, `/issues/new`, `/issues/[issueId]`.
 
-Create, open, edit, assignee, priority, labels, comments, and history work. Search matches the title on the server, 20 per page. The default status is To Do. The default priority is Medium. A new issue requires at least one project. The project overview links to new issue and to each issue. Create and the `C` key go to `/issues/new`.
+Create, open, edit, assignee, priority, labels, comments, history, and due date work. Search matches the title on the server, 20 per page. The default status is To Do. The default priority is Medium. A new issue requires at least one project. The project overview links to new issue and to each issue. Create and the `C` key go to `/issues/new`.
+
+`/my-work` lists open issues assigned to you, open issues you reported, and issues you are assigned to or reported that are due within 7 days, including overdue. Done issues are left out. Each list shows 20 rows. Set the due date on the issue page.
 
 Service: `src/lib/services/issue.service.ts`. Actions: `src/lib/actions/issues.ts`. Validation: `src/lib/validations/issue.ts`.
 
 Still inside Phase 4, and not built:
 
-- My Work: assigned to you, reported by you, due soon
 - Subtasks
 - Issue linking
-
-Due dates exist on the schema. My Work can use them. Do not add a migration for My Work unless a column is actually missing.
 
 ## Remaining phases
 
 Build one phase at a time. Stop when the requested phase is done.
 
-### Phase 4 remainder — My Work first
+### Phase 4 remainder
 
-`/my-work` is still the shared placeholder page.
-
-- Assigned to the current user
-- Reported by the current user
-- Due soon
-
-Then, only if requested: subtasks and links between issues. The tables for links already exist.
+Only if requested: subtasks and links between issues. The tables for links already exist. My Work is already built.
 
 ### Phase 5 — Kanban
 

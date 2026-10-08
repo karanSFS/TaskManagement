@@ -12,7 +12,9 @@ export const createIssueSchema = z.object({
   assigneeId: assignee,
 })
 
-export const updateIssueSchema = createIssueSchema.omit({ projectId: true })
+export const updateIssueSchema = createIssueSchema.omit({ projectId: true }).extend({
+  dueDate: z.string().refine((value) => value === "" || isIsoDate(value), "Enter a valid date"),
+})
 
 export const commentSchema = z.object({
   body: z.string().trim().min(1, "Write a comment").max(8000, "Comment is too long"),
@@ -21,6 +23,13 @@ export const commentSchema = z.object({
 export const labelNameSchema = z.object({
   name: z.string().trim().min(1, "Enter a label").max(40, "Label is too long"),
 })
+
+function isIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
 
 export type CreateIssueValues = z.infer<typeof createIssueSchema>
 export type UpdateIssueValues = z.infer<typeof updateIssueSchema>
