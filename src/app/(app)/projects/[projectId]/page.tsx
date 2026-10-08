@@ -4,7 +4,7 @@ import { notFound } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate, issueKey, roleLabel } from "@/lib/projects/format"
-import { getProject } from "@/lib/projects/queries"
+import { getProject } from "@/lib/services/project.service"
 
 export const metadata = { title: "Project" }
 

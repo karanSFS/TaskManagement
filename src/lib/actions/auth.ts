@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { actionError } from "@/lib/actions/result"
 import { safeNextPath, type ActionState } from "@/lib/auth/paths"
+import { getCurrentUser } from "@/lib/auth/session"
+import { AppError } from "@/lib/errors/app-error"
+import { updateProfileName } from "@/lib/services/profile.service"
 import { createClient } from "@/lib/supabase/server"
 import {
   forgotPasswordSchema,
@@ -126,30 +130,28 @@ export async function updateProfile(values: ProfileValues): Promise<ActionState>
     return { error: "Enter a name between 2 and 80 characters." }
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const user = await getCurrentUser()
   if (!user) {
     return { error: "Sign in to update your profile." }
   }
 
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ display_name: parsed.data.fullName })
-    .eq("id", user.id)
+  try {
+    await updateProfileName(user.id, parsed.data.fullName)
+  } catch (error) {
+    if (!(error instanceof AppError)) {
+      throw error
+    }
 
-  if (profileError) {
-    return { error: "Could not save your profile." }
+    return actionError(error, "updateProfile", user.id)
   }
 
+  const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({
     data: { full_name: parsed.data.fullName },
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: "Could not save your profile." }
   }
 
   revalidatePath("/", "layout")

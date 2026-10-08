@@ -6,7 +6,7 @@ import { ProjectNav } from "@/components/projects/project-nav"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
-import { getProject } from "@/lib/projects/queries"
+import { getProject } from "@/lib/services/project.service"
 
 export default function ProjectLayout({
   children,

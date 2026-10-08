@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { roleLabel } from "@/lib/projects/format"
-import { getProjects, type ProjectSummary } from "@/lib/projects/queries"
+import { getProjects, type ProjectSummary } from "@/lib/services/project.service"
 
 export const metadata = { title: "Projects" }
 

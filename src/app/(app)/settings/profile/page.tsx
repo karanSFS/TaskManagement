@@ -4,7 +4,7 @@ import { ProfileForm } from "@/components/auth/profile-form"
 import { PageHeader } from "@/components/layout/page-header"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
-import { createClient } from "@/lib/supabase/server"
+import { getProfileName } from "@/lib/services/profile.service"
 
 export const metadata = {
   title: "Profile",
@@ -27,9 +27,8 @@ async function ProfileContent() {
     return null
   }
 
-  const supabase = await createClient()
-  const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle()
   const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name : ""
+  const profileName = await getProfileName(user.id)
 
-  return <ProfileForm email={user.email ?? ""} fullName={profile?.display_name || metadataName} />
+  return <ProfileForm email={user.email ?? ""} fullName={profileName || metadataName} />
 }

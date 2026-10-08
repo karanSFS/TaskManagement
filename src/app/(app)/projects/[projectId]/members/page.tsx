@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { MemberManager } from "@/components/projects/member-manager"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
-import { getProject } from "@/lib/projects/queries"
+import { getProject } from "@/lib/services/project.service"
 
 export const metadata = { title: "Members" }
 

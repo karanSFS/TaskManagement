@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate } from "@/lib/projects/format"
 import { isProjectIcon } from "@/lib/projects/icons"
-import { getProject } from "@/lib/projects/queries"
+import { getProject } from "@/lib/services/project.service"
 
 export const metadata = { title: "Project settings" }
 
