@@ -25,6 +25,13 @@ export const labelNameSchema = z.object({
   name: z.string().trim().min(1, "Enter a label").max(40, "Label is too long"),
 })
 
+export const boardAssignees = ["all", "me", "unassigned"] as const
+
+export const changeStatusSchema = z.object({
+  issueId: z.uuid("Choose an issue"),
+  statusId: z.uuid("Choose a status"),
+})
+
 function isIsoDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const [year, month, day] = value.split("-").map(Number)

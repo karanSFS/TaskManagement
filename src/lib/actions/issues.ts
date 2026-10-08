@@ -11,17 +11,19 @@ import {
   addIssueComment,
   addIssueLabel,
   createIssue as createIssueRecord,
+  changeIssueStatus as changeIssueStatusRecord,
   deleteIssue as deleteIssueRecord,
   deleteIssueComment,
   removeIssueLabel,
   updateIssue as updateIssueRecord,
 } from "@/lib/services/issue.service"
-import { commentSchema, createIssueSchema, labelNameSchema, updateIssueSchema } from "@/lib/validations/issue"
+import { commentSchema, changeStatusSchema, createIssueSchema, labelNameSchema, updateIssueSchema } from "@/lib/validations/issue"
 
 function refreshIssue(issueId: string, projectId: string | null) {
   revalidatePath("/issues")
   revalidatePath("/my-work")
   revalidatePath("/dashboard")
+  revalidatePath("/board")
   revalidatePath(`/issues/${issueId}`)
   revalidatePath("/projects")
   if (projectId) revalidatePath(`/projects/${projectId}`)
@@ -61,6 +63,22 @@ export async function updateIssue(issueId: string, values: unknown): Promise<Act
     return { success: "Issue saved." }
   } catch (error) {
     return failure(error, "updateIssue", user.id, issueId)
+  }
+}
+
+export async function changeIssueStatus(issueId: string, statusId: string): Promise<ActionState> {
+  const parsed = changeStatusSchema.safeParse({ issueId, statusId })
+  if (!parsed.success) return { error: "Choose a valid status." }
+
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to move this issue." }
+
+  try {
+    const updated = await changeIssueStatusRecord(user.id, parsed.data.issueId, parsed.data.statusId)
+    refreshIssue(parsed.data.issueId, updated.project_id)
+    return { success: "Status updated." }
+  } catch (error) {
+    return failure(error, "changeIssueStatus", user.id, issueId)
   }
 }
 

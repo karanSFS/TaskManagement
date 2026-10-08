@@ -32,6 +32,7 @@ function projectPaths(projectId: string) {
   revalidatePath("/issues/new")
   revalidatePath("/my-work")
   revalidatePath("/dashboard")
+  revalidatePath("/board")
 }
 
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {

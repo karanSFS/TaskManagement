@@ -8,9 +8,9 @@ The living plan is [PLAN.md](PLAN.md). Read it before starting a phase. When a p
 
 ## Current progress
 
-Phases 1–3 are done: foundation, the hosted database, and projects. Phase 4 covers issues and My Work (`/my-work`). Home shows live project and assignment counts. Subtasks and issue links are still open inside Phase 4.
+Phases 1–6 are done: foundation, the hosted database, projects, issues, My Work, the board, the backlog, and sprints. Subtasks and issue links are still open.
 
-**Next phase:** Phase 5, the board at `/board`. Do not start it until it is requested.
+**Next phase:** Phase 7, search and filters. Do not start it until it is requested.
 
 The app in `.env.local` talks to the hosted Supabase project, not the local Docker stack. Do not replace those values with `127.0.0.1` unless you mean to develop against a local database. Never reset the hosted database. Schema changes belong in `supabase/migrations/` and go to the hosted project with `npx supabase db push --dry-run` first.
 

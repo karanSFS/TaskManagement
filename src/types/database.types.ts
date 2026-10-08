@@ -778,6 +778,7 @@ export type Database = {
         }
         Returns: string
       }
+      complete_sprint: { Args: { target_sprint_id: string }; Returns: string }
       project_issue_counts: {
         Args: never
         Returns: {
@@ -786,6 +787,7 @@ export type Database = {
           project_id: string
         }[]
       }
+      start_sprint: { Args: { target_sprint_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

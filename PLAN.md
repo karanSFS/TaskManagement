@@ -17,16 +17,16 @@ Last updated: 2026-10-08.
 | 3 | Projects | Done |
 | — | Shared service layer | Done |
 | 4 | Issues | Mostly done. My Work is done. Subtasks and issue links are not built. |
-| 5 | Kanban | Not started |
-| 6 | Backlog and sprints | Not started |
+| 5 | Kanban | Done. `/board` has columns, drag and drop, and status changes. |
+| 6 | Backlog and sprints | Done. Plan, start, and complete sprints. One active sprint per project. |
 | 7 | Search and filters | Not started. Page jump exists. Issue search does not. |
 | 8 | Notifications and storage | Not started. The `attachments` bucket and notification trigger exist. |
 | 9 | Dashboard and reports | Home shows real project and assignment counts. Reports and charts are not built. |
 | 10 | Production polish | Not started |
 
-**Next step:** Phase 5, the board (`/board`). Columns, drag and drop, and status changes through the issue service. Do not start sprints in the same step.
+**Next step:** Phase 7, search and filters. Global search still only jumps to pages. Add issue key, title, and label search in Postgres. Do not start notifications in the same step.
 
-A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Subtasks, issue links, the board, sprints, search, notifications, and reports are still later phases.
+A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Subtasks, issue links, search, notifications, and reports are still later phases.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -193,11 +193,11 @@ Only if requested: subtasks and links between issues. The tables for links alrea
 
 ### Phase 5 — Kanban
 
-`/board`. Columns, drag and drop, status changes, filters. Add dnd-kit here. Status changes go through the issue service so history and notifications still run.
+Done. `/board` shows one project at a time. Columns follow the status list. Dragging a card into another column calls `changeIssueStatus`, which updates `issues.status_id` so the history trigger still runs. Filters are project, assignee (anyone, assigned to me, unassigned), and title. The board loads the latest 200 matching issues.
 
 ### Phase 6 — Backlog and sprints
 
-`/backlog` and `/sprints`. Create, start, and complete sprints. One active sprint per project is already enforced. Show sprint progress.
+Done. `/backlog` lists open issues with no sprint and can add them to a planned or active sprint. `/sprints` plans a sprint, starts it, and completes it. Completing a sprint returns unfinished issues to the backlog in one database function. Done issues stay on the completed sprint. A project can have only one active sprint. Progress is done issues divided by issues in that sprint.
 
 ### Phase 7 — Search and filters
 

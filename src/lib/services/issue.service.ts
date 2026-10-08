@@ -53,6 +53,31 @@ export type IssueList = {
   total: number
 }
 
+export type BoardCard = {
+  id: string
+  number: number
+  title: string
+  priority: string
+  assigneeName: string | null
+  statusId: string
+}
+
+export type BoardColumn = {
+  id: string
+  name: string
+  issues: BoardCard[]
+}
+
+export type BoardData = {
+  projectId: string
+  projectName: string
+  projectKey: string
+  archived: boolean
+  total: number
+  shown: number
+  columns: BoardColumn[]
+}
+
 export type IssueComment = {
   id: string
   body: string
@@ -438,6 +463,89 @@ function historySummary(field: string, newValue: string | null, names: Map<strin
   if (field === "due_date") return newValue ? `Due date set to ${formatDueDate(newValue)}` : "Due date cleared"
   if (field === "sprint") return newValue ? "Moved to a sprint" : "Removed from the sprint"
   return `${field} updated`
+}
+
+const boardLimit = 200
+
+export async function listBoard(
+  userId: string,
+  projectId: string,
+  assignee: "all" | "me" | "unassigned",
+  query: string,
+): Promise<BoardData | null> {
+  const supabase = await createClient()
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, name, key, archived_at")
+    .eq("id", projectId)
+    .maybeSingle()
+
+  if (projectError) throw new DatabaseError("Could not load the board.")
+  if (!project) return null
+
+  const catalog = await getIssueCatalog()
+  let request = supabase
+    .from("issues")
+    .select(
+      "id, issue_number, title, status_id, priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name)",
+      { count: "exact" },
+    )
+    .eq("project_id", projectId)
+    .order("updated_at", { ascending: false })
+    .limit(boardLimit)
+
+  const needle = query.trim().replace(/[%_\\]/g, "")
+  if (needle) request = request.ilike("title", `%${needle}%`)
+  if (assignee === "me") request = request.eq("assignee_id", userId)
+  if (assignee === "unassigned") request = request.is("assignee_id", null)
+
+  const { data, error, count } = await request
+  if (error) throw new DatabaseError("Could not load the board.")
+
+  const cards: BoardCard[] = (data ?? []).map((issue) => ({
+    id: issue.id,
+    number: issue.issue_number,
+    title: issue.title,
+    priority: one(issue.priorities as NamedEmbed)?.name ?? "Unknown",
+    assigneeName: one(issue.assignee as NameEmbed)?.display_name ?? null,
+    statusId: issue.status_id,
+  }))
+
+  return {
+    projectId: project.id,
+    projectName: project.name,
+    projectKey: project.key,
+    archived: Boolean(project.archived_at),
+    total: count ?? cards.length,
+    shown: cards.length,
+    columns: catalog.statuses.map((status) => ({
+      id: status.id,
+      name: status.name,
+      issues: cards.filter((card) => card.statusId === status.id),
+    })),
+  }
+}
+
+export async function changeIssueStatus(userId: string, issueId: string, statusId: string) {
+  void userId
+  const catalog = await getIssueCatalog()
+  if (!catalog.statuses.some((status) => status.id === statusId)) {
+    throw new AppError("INVALID_ISSUE_STATUS", "Choose a status from the board.", 422)
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("issues")
+    .update({ status_id: statusId })
+    .eq("id", issueId)
+    .select("id, project_id")
+
+  if (error) raiseIssueWriteError(error.message)
+  if (!data?.length || !data[0]) {
+    throw new AuthorizationError("ISSUE_ACCESS_DENIED", "You don't have permission to move this issue.")
+  }
+
+  return data[0]
 }
 
 export async function createIssue(userId: string, input: CreateIssueValues) {
