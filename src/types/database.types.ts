@@ -770,7 +770,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_project_member: {
+        Args: {
+          member_email: string
+          member_role: string
+          target_project_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
