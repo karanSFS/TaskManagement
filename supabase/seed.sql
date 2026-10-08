@@ -1,0 +1,3 @@
+-- TaskForge local seed data.
+-- Phase 1 has no application tables yet. Later phases add seed rows here.
+-- This file is loaded by `supabase db reset` after migrations.
