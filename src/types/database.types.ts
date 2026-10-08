@@ -787,6 +787,32 @@ export type Database = {
           project_id: string
         }[]
       }
+      search_issues: {
+        Args: {
+          assignee_filter?: string
+          page_limit?: number
+          page_offset?: number
+          search_text?: string
+          sort_ascending?: boolean
+          sort_by?: string
+          target_priority_id?: string
+          target_project_id?: string
+          target_status_id?: string
+          target_type_id?: string
+        }
+        Returns: {
+          assignee_name: string
+          id: string
+          issue_number: number
+          priority_name: string
+          project_key: string
+          project_name: string
+          status_name: string
+          title: string
+          total_count: number
+          updated_at: string
+        }[]
+      }
       start_sprint: { Args: { target_sprint_id: string }; Returns: string }
     }
     Enums: {

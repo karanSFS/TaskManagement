@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -11,6 +13,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command"
+import { searchIssues } from "@/lib/actions/issues"
 import { mainNav, utilityNav } from "@/lib/config/nav"
 
 type GlobalSearchProps = {
@@ -18,12 +21,30 @@ type GlobalSearchProps = {
   onOpenChange: (open: boolean) => void
 }
 
+type IssueHit = { id: string; key: string; title: string; projectName: string }
+
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const router = useRouter()
+  const [query, setQuery] = useState("")
+  const [issues, setIssues] = useState<IssueHit[]>([])
   const pages = [...mainNav, ...utilityNav]
+  const needle = query.trim().toLowerCase()
+  const visiblePages = pages.filter((item) => {
+    if (!needle) return true
+    return `${item.title} ${item.description}`.toLowerCase().includes(needle)
+  })
+
+  useEffect(() => {
+    if (!open) return
+    const handle = window.setTimeout(() => {
+      void searchIssues(query).then(setIssues)
+    }, 250)
+    return () => window.clearTimeout(handle)
+  }, [open, query])
 
   function go(href: string) {
     onOpenChange(false)
+    setQuery("")
     router.push(href)
   }
 
@@ -32,26 +53,35 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       open={open}
       onOpenChange={onOpenChange}
       title="Search TaskForge"
-      description="Jump to a page. Issue search arrives in Phase 7."
+      description="Search issues by key, title, or label, or jump to a page."
     >
-      <CommandInput placeholder="Jump to a page…" />
-      <CommandList>
-        <CommandEmpty>No matching pages.</CommandEmpty>
-        <CommandGroup heading="Pages">
-          {pages.map((item) => (
-            <CommandItem key={item.href} value={`${item.title} ${item.description}`} onSelect={() => go(item.href)}>
-              <item.icon />
-              <span>{item.title}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Coming later">
-          <CommandItem disabled value="issue search">
-            <span>Issue keys, titles, and labels — Phase 7</span>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
+      <Command shouldFilter={false}>
+        <CommandInput placeholder="Search issues or pages…" value={query} onValueChange={setQuery} />
+        <CommandList>
+          <CommandEmpty>No matching pages or issues.</CommandEmpty>
+          {issues.length > 0 ? (
+            <CommandGroup heading="Issues">
+              {issues.map((issue) => (
+                <CommandItem key={issue.id} value={issue.id} onSelect={() => go(`/issues/${issue.id}`)}>
+                  <span className="text-muted-foreground">{issue.key}</span>
+                  <span className="truncate">{issue.title}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+          {issues.length > 0 && visiblePages.length > 0 ? <CommandSeparator /> : null}
+          {visiblePages.length > 0 ? (
+            <CommandGroup heading="Pages">
+              {visiblePages.map((item) => (
+                <CommandItem key={item.href} value={item.href} onSelect={() => go(item.href)}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+        </CommandList>
+      </Command>
     </CommandDialog>
   )
 }

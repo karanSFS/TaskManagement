@@ -16,17 +16,17 @@ Last updated: 2026-10-08.
 | 2 | Database | Done, applied to the hosted project |
 | 3 | Projects | Done |
 | — | Shared service layer | Done |
-| 4 | Issues | Mostly done. My Work is done. Subtasks and issue links are not built. |
+| 4 | Issues | Done. Create, edit, My Work, subtasks, and issue links. |
 | 5 | Kanban | Done. `/board` has columns, drag and drop, and status changes. |
 | 6 | Backlog and sprints | Done. Plan, start, and complete sprints. One active sprint per project. |
-| 7 | Search and filters | Not started. Page jump exists. Issue search does not. |
+| 7 | Search and filters | Done. Issues search by key, title, and label. The list sorts and filters in Postgres. |
 | 8 | Notifications and storage | Not started. The `attachments` bucket and notification trigger exist. |
 | 9 | Dashboard and reports | Home shows real project and assignment counts. Reports and charts are not built. |
 | 10 | Production polish | Not started |
 
-**Next step:** Phase 7, search and filters. Global search still only jumps to pages. Add issue key, title, and label search in Postgres. Do not start notifications in the same step.
+**Next step:** Phase 8, notifications and storage. The inbox, mentions, and attachment uploads are not built. Do not start reports in the same step.
 
-A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Subtasks, issue links, search, notifications, and reports are still later phases.
+A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Notifications and reports are still later phases.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -36,7 +36,7 @@ TaskForge is a project and issue manager for personal and small-team use.
 
 - Compact developer UI. Lists, not giant cards.
 - Light and dark. Forge ember (orange-amber) is the accent. Steel teal is the focus and info color.
-- Keyboard: `/` jumps between pages, `C` opens new issue, `⌘/Ctrl+B` collapses the sidebar. Ignore shortcuts while typing in a field.
+- Keyboard: `/` searches issues and jumps between pages, `C` opens new issue, `⌘/Ctrl+B` collapses the sidebar. Ignore shortcuts while typing in a field.
 
 ## Stack
 
@@ -172,24 +172,17 @@ Profile name is `profiles.display_name`. Saving the profile updates that row and
 
 Routes: `/issues`, `/issues/new`, `/issues/[issueId]`.
 
-Create, open, edit, assignee, priority, labels, comments, history, and due date work. Search matches the title on the server, 20 per page. The default status is To Do. The default priority is Medium. A new issue requires at least one project. The project overview links to new issue and to each issue. Create and the `C` key go to `/issues/new`.
+Create, open, edit, assignee, priority, labels, comments, history, and due date work. The default status is To Do. The default priority is Medium. A new issue requires at least one project. The project overview links to new issue and to each issue. Create and the `C` key go to `/issues/new`.
 
 `/my-work` lists open issues assigned to you, open issues you reported, and issues you are assigned to or reported that are due within 7 days, including overdue. Done issues are left out. Each list shows 20 rows. Set the due date on the issue page.
 
+A subtask is a new issue in the same project with `parent_issue_id` set and type `subtask`. The issue page lists children and links back to the parent. Archived projects cannot take new subtasks. Links use `issue_links` with types `blocks`, `relates`, and `duplicates`. Both directions show on the issue. A link stays inside one project. The same pair and type cannot be added twice.
+
 Service: `src/lib/services/issue.service.ts`. Actions: `src/lib/actions/issues.ts`. Validation: `src/lib/validations/issue.ts`.
-
-Still inside Phase 4, and not built:
-
-- Subtasks
-- Issue linking
 
 ## Remaining phases
 
 Build one phase at a time. Stop when the requested phase is done.
-
-### Phase 4 remainder
-
-Only if requested: subtasks and links between issues. The tables for links already exist. My Work is already built.
 
 ### Phase 5 — Kanban
 
@@ -201,7 +194,7 @@ Done. `/backlog` lists open issues with no sprint and can add them to a planned 
 
 ### Phase 7 — Search and filters
 
-Global search today only jumps to pages (`src/components/layout/global-search.tsx`). Add issue key, title, and label search, plus sorting and filters. Keep the query in Postgres.
+Done. `public.search_issues` matches title, `project key-number`, and label name. It is security invoker, so row security still applies. `/issues` filters by project, status, priority, type, and assignee (anyone, me, unassigned), and sorts by updated, created, title, priority, or key. The command palette (`/`) searches the same function once the query is at least two characters, and still jumps to pages.
 
 ### Phase 8 — Notifications and storage
 
@@ -231,7 +224,7 @@ src/app/auth                   confirm and sign-out
 src/components/ui              shadcn/ui
 src/components/layout          sidebar, top bar, search
 src/components/projects        project forms and members
-src/components/issues          issue form, editor, comments, labels
+src/components/issues          issue form, editor, comments, labels, subtasks, links
 src/lib/services               project, issue, and profile services
 src/lib/actions                auth, projects, issues
 src/lib/errors                 AppError classes

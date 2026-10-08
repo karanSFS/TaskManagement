@@ -32,6 +32,18 @@ export const changeStatusSchema = z.object({
   statusId: z.uuid("Choose a status"),
 })
 
+export const issueSorts = ["updated", "created", "title", "priority", "key"] as const
+export const linkTypes = ["blocks", "relates", "duplicates"] as const
+
+export const subtaskSchema = z.object({
+  title: z.string().trim().min(1, "Enter a title").max(200, "Title is too long"),
+})
+
+export const issueLinkSchema = z.object({
+  targetIssueId: z.uuid("Choose an issue"),
+  linkType: z.enum(linkTypes),
+})
+
 function isIsoDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const [year, month, day] = value.split("-").map(Number)

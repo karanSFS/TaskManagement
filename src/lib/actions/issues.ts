@@ -11,13 +11,17 @@ import {
   addIssueComment,
   addIssueLabel,
   createIssue as createIssueRecord,
+  createSubtask as createSubtaskRecord,
+  addIssueLink as addIssueLinkRecord,
+  removeIssueLink as removeIssueLinkRecord,
   changeIssueStatus as changeIssueStatusRecord,
   deleteIssue as deleteIssueRecord,
   deleteIssueComment,
   removeIssueLabel,
   updateIssue as updateIssueRecord,
+  listIssues,
 } from "@/lib/services/issue.service"
-import { commentSchema, changeStatusSchema, createIssueSchema, labelNameSchema, updateIssueSchema } from "@/lib/validations/issue"
+import { commentSchema, changeStatusSchema, createIssueSchema, issueLinkSchema, labelNameSchema, subtaskSchema, updateIssueSchema } from "@/lib/validations/issue"
 
 function refreshIssue(issueId: string, projectId: string | null) {
   revalidatePath("/issues")
@@ -152,3 +156,70 @@ export async function removeLabel(issueId: string, labelId: string): Promise<Act
     return failure(error, "removeLabel", user.id, issueId)
   }
 }
+
+export async function createSubtask(issueId: string, values: unknown): Promise<ActionState> {
+  const parsed = subtaskSchema.safeParse(values)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a subtask title." }
+
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to add a subtask." }
+
+  try {
+    const created = await createSubtaskRecord(user.id, issueId, parsed.data.title)
+    refreshIssue(issueId, created.project_id)
+    refreshIssue(created.id, created.project_id)
+    return { success: "Subtask added." }
+  } catch (error) {
+    return failure(error, "createSubtask", user.id, issueId)
+  }
+}
+
+export async function addIssueLink(issueId: string, values: unknown): Promise<ActionState> {
+  const parsed = issueLinkSchema.safeParse(values)
+  if (!parsed.success) return { error: "Choose an issue and a link type." }
+
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to link an issue." }
+
+  try {
+    const projectId = await addIssueLinkRecord(user.id, issueId, parsed.data.targetIssueId, parsed.data.linkType)
+    refreshIssue(issueId, projectId)
+    refreshIssue(parsed.data.targetIssueId, projectId)
+    return { success: "Link added." }
+  } catch (error) {
+    return failure(error, "addIssueLink", user.id, issueId)
+  }
+}
+
+export async function removeIssueLink(issueId: string, linkId: string): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to remove a link." }
+
+  try {
+    const projectId = await removeIssueLinkRecord(linkId, issueId)
+    refreshIssue(issueId, projectId)
+    return { success: "Link removed." }
+  } catch (error) {
+    return failure(error, "removeIssueLink", user.id, issueId)
+  }
+}
+
+export async function searchIssues(query: string) {
+  const user = await getCurrentUser()
+  const needle = query.trim()
+  if (!user || needle.length < 2) return []
+
+  try {
+    const result = await listIssues(user.id, 1, { query: needle, limit: 8 })
+    return result.items.map((issue) => ({
+      id: issue.id,
+      key: `${issue.projectKey}-${issue.number}`,
+      title: issue.title,
+      projectName: issue.projectName,
+    }))
+  } catch (error) {
+    if (!(error instanceof AppError)) throw error
+    return []
+  }
+}
+

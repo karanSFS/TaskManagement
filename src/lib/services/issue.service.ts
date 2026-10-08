@@ -119,6 +119,10 @@ export type IssueDetail = {
   members: { id: string; name: string }[]
   comments: IssueComment[]
   history: IssueHistoryEntry[]
+  parent: { id: string; number: number; title: string } | null
+  subtasks: { id: string; number: number; title: string; status: string }[]
+  links: { id: string; type: string; direction: "out" | "in"; issueId: string; number: number; title: string; projectKey: string }[]
+  linkChoices: { id: string; number: number; title: string }[]
 }
 
 type NameEmbed = { display_name: string } | { display_name: string }[] | null
@@ -137,8 +141,17 @@ function raiseIssueWriteError(message: string): never {
   if (message.includes("Label and issue must belong to the same project")) {
     throw new AppError("INVALID_LABEL", "That label belongs to a different project.", 422)
   }
+  if (message.includes("issue_links_source_issue_id_target_issue_id_link_type_key")) {
+    throw new AppError("DUPLICATE_LINK", "Those issues are already linked that way.", 409)
+  }
   if (message.includes("labels_project_id_name_key") || message.includes("duplicate key")) {
     throw new AppError("DUPLICATE_LABEL", "That label already exists in this project.", 409)
+  }
+  if (message.includes("Parent issue must belong")) {
+    throw new AppError("INVALID_ISSUE", "A subtask must stay in the same project as its parent.", 422)
+  }
+  if (message.includes("cannot be its own parent")) {
+    throw new AppError("INVALID_ISSUE", "An issue cannot be its own parent.", 422)
   }
   if (message.includes("cannot move between projects") || message.includes("numbers cannot change")) {
     throw new AppError("INVALID_ISSUE", "That change is not allowed.", 422)
@@ -226,54 +239,61 @@ export async function listIssueProjects(userId: string) {
   return data ?? []
 }
 
-export async function listIssues(
-  userId: string,
-  page: number,
-  query: string,
-  projectId?: string,
-): Promise<IssueList> {
+export type IssueFilters = {
+  query?: string
+  projectId?: string
+  statusId?: string
+  priorityId?: string
+  typeId?: string
+  assignee?: "all" | "me" | "unassigned"
+  sort?: "updated" | "created" | "title" | "priority" | "key"
+  ascending?: boolean
+  limit?: number
+}
+
+export async function listIssues(userId: string, page: number, filters: IssueFilters = {}): Promise<IssueList> {
   void userId
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
-  const from = (safePage - 1) * pageSize
+  const limit = filters.limit && filters.limit > 0 ? Math.min(filters.limit, 50) : pageSize
+  const from = (safePage - 1) * limit
   const supabase = await createClient()
-  let request = supabase
-    .from("issues")
-    .select(
-      "id, issue_number, title, updated_at, project:projects!issues_project_id_fkey(key, name), issue_statuses!issues_status_id_fkey(name), priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name)",
-      { count: "exact" },
-    )
-    .order("updated_at", { ascending: false })
-    .range(from, from + pageSize - 1)
+  const { data, error } = await supabase.rpc("search_issues", {
+    search_text: filters.query ?? "",
+    target_project_id: uuidOrNull(filters.projectId),
+    target_status_id: uuidOrNull(filters.statusId),
+    target_priority_id: uuidOrNull(filters.priorityId),
+    target_type_id: uuidOrNull(filters.typeId),
+    assignee_filter: filters.assignee ?? "all",
+    sort_by: filters.sort ?? "updated",
+    sort_ascending: filters.ascending ?? false,
+    page_limit: limit,
+    page_offset: from,
+  })
 
-  const needle = query.trim().replace(/[%_\\]/g, "")
-  if (needle) request = request.ilike("title", `%${needle}%`)
-  if (projectId) request = request.eq("project_id", projectId)
-
-  const { data, error, count } = await request
   if (error) throw new DatabaseError("Could not load issues.")
 
+  const rows = data ?? []
   return {
     page: safePage,
-    pageSize,
-    total: count ?? 0,
-    items: (data ?? []).map((issue) => {
-      const project = one(issue.project as { key: string; name: string } | { key: string; name: string }[] | null)
-      const status = one(issue.issue_statuses as NamedEmbed)
-      const priority = one(issue.priorities as NamedEmbed)
-      const assignee = one(issue.assignee as NameEmbed)
-      return {
-        id: issue.id,
-        number: issue.issue_number,
-        title: issue.title,
-        projectKey: project?.key ?? "ISSUE",
-        projectName: project?.name ?? "Project",
-        status: status?.name ?? "Unknown",
-        priority: priority?.name ?? "Unknown",
-        assigneeName: assignee?.display_name ?? null,
-        updatedAt: issue.updated_at,
-      }
-    }),
+    pageSize: limit,
+    total: rows[0]?.total_count ?? 0,
+    items: rows.map((issue) => ({
+      id: issue.id,
+      number: issue.issue_number,
+      title: issue.title,
+      projectKey: issue.project_key,
+      projectName: issue.project_name,
+      status: issue.status_name,
+      priority: issue.priority_name,
+      assigneeName: issue.assignee_name,
+      updatedAt: issue.updated_at,
+    })),
   }
+}
+
+function uuidOrNull(value: string | undefined) {
+  if (!value || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) return undefined
+  return value
 }
 
 const myWorkSelect =
@@ -364,7 +384,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   const { data: issue, error } = await supabase
     .from("issues")
     .select(
-      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name, archived_at), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
+      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, parent_issue_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name, archived_at), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
     )
     .eq("id", issueId)
     .maybeSingle()
@@ -372,7 +392,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   if (error) throw new DatabaseError("Could not load this issue.")
   if (!issue) return null
 
-  const [catalog, labels, projectLabels, members, comments, history] = await Promise.all([
+  const [catalog, labels, projectLabels, members, comments, history, children, links, choices, parent] = await Promise.all([
     getIssueCatalog(),
     supabase.from("issue_labels").select("label:labels(id, name, color)").eq("issue_id", issueId),
     supabase.from("labels").select("id, name, color").eq("project_id", issue.project_id).order("name"),
@@ -392,9 +412,31 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
       .eq("issue_id", issueId)
       .order("created_at", { ascending: false })
       .limit(40),
+    supabase
+      .from("issues")
+      .select("id, issue_number, title, issue_statuses!issues_status_id_fkey(name)")
+      .eq("parent_issue_id", issueId)
+      .order("issue_number")
+      .limit(50),
+    supabase
+      .from("issue_links")
+      .select(
+        "id, link_type, source_issue_id, target_issue_id, source:issues!issue_links_source_issue_id_fkey(id, issue_number, title, project:projects!issues_project_id_fkey(key)), target:issues!issue_links_target_issue_id_fkey(id, issue_number, title, project:projects!issues_project_id_fkey(key))",
+      )
+      .or(`source_issue_id.eq.${issueId},target_issue_id.eq.${issueId}`),
+    supabase
+      .from("issues")
+      .select("id, issue_number, title")
+      .eq("project_id", issue.project_id)
+      .neq("id", issueId)
+      .order("updated_at", { ascending: false })
+      .limit(100),
+    issue.parent_issue_id
+      ? supabase.from("issues").select("id, issue_number, title").eq("id", issue.parent_issue_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ])
 
-  if (labels.error || projectLabels.error || members.error || comments.error || history.error) {
+  if (labels.error || projectLabels.error || members.error || comments.error || history.error || children.error || links.error || choices.error || parent.error) {
     throw new DatabaseError("Could not load this issue.")
   }
 
@@ -450,7 +492,43 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
       summary: historySummary(entry.field, entry.new_value, names),
       actorName: entry.actor_id ? (actorNames.get(entry.actor_id) ?? "Former member") : "TaskForge",
     })),
+    parent: parent.data
+      ? { id: parent.data.id, number: parent.data.issue_number, title: parent.data.title }
+      : null,
+    subtasks: (children.data ?? []).map((child) => ({
+      id: child.id,
+      number: child.issue_number,
+      title: child.title,
+      status: one(child.issue_statuses as NamedEmbed)?.name ?? "Unknown",
+    })),
+    links: (links.data ?? []).flatMap((link) => {
+      const outgoing = link.source_issue_id === issueId
+      const other = one((outgoing ? link.target : link.source) as LinkedIssue | LinkedIssue[] | null)
+      const otherProject = one(other?.project ?? null)
+      if (!other) return []
+      return [{
+        id: link.id,
+        type: link.link_type,
+        direction: outgoing ? "out" as const : "in" as const,
+        issueId: other.id,
+        number: other.issue_number,
+        title: other.title,
+        projectKey: otherProject?.key ?? project?.key ?? "ISSUE",
+      }]
+    }),
+    linkChoices: (choices.data ?? []).map((choice) => ({
+      id: choice.id,
+      number: choice.issue_number,
+      title: choice.title,
+    })),
   }
+}
+
+type LinkedIssue = {
+  id: string
+  issue_number: number
+  title: string
+  project: { key: string } | { key: string }[] | null
 }
 
 function historySummary(field: string, newValue: string | null, names: Map<string, string>) {
@@ -686,6 +764,81 @@ export async function addIssueLabel(userId: string, issueId: string, name: strin
 export async function removeIssueLabel(issueId: string, labelId: string) {
   const supabase = await createClient()
   const { error } = await supabase.from("issue_labels").delete().eq("issue_id", issueId).eq("label_id", labelId)
+  if (error) raiseIssueWriteError(error.message)
+  const { data: issue } = await supabase.from("issues").select("project_id").eq("id", issueId).maybeSingle()
+  return issue?.project_id ?? null
+}
+
+export async function createSubtask(userId: string, parentIssueId: string, title: string) {
+  const supabase = await createClient()
+  const { data: parent, error: readError } = await supabase
+    .from("issues")
+    .select("id, project_id, priority_id")
+    .eq("id", parentIssueId)
+    .maybeSingle()
+
+  if (readError) throw new DatabaseError("Could not load this issue.")
+  if (!parent) throw new NotFoundError("ISSUE_NOT_FOUND", "Issue could not be found.")
+
+  const catalog = await getIssueCatalog()
+  const subtaskType = catalog.types.find((type) => type.slug === "subtask")
+  const todo = catalog.statuses.find((status) => status.slug === "todo") ?? catalog.statuses[0]
+  if (!subtaskType || !todo) throw new DatabaseError("Could not create the subtask.")
+
+  const { data, error } = await supabase
+    .from("issues")
+    .insert({
+      project_id: parent.project_id,
+      title,
+      description: "",
+      issue_type_id: subtaskType.id,
+      status_id: todo.id,
+      priority_id: parent.priority_id,
+      reporter_id: userId,
+      parent_issue_id: parent.id,
+      issue_number: 1,
+    })
+    .select("id, project_id")
+    .maybeSingle()
+
+  if (error) raiseIssueWriteError(error.message)
+  if (!data) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have access to that project.")
+  return data
+}
+
+export async function addIssueLink(userId: string, sourceIssueId: string, targetIssueId: string, linkType: string) {
+  if (sourceIssueId === targetIssueId) {
+    throw new AppError("INVALID_ISSUE", "An issue cannot link to itself.", 422)
+  }
+
+  const supabase = await createClient()
+  const { data: issues, error: readError } = await supabase
+    .from("issues")
+    .select("id, project_id")
+    .in("id", [sourceIssueId, targetIssueId])
+
+  if (readError) throw new DatabaseError("Could not load these issues.")
+  const source = issues?.find((issue) => issue.id === sourceIssueId)
+  const target = issues?.find((issue) => issue.id === targetIssueId)
+  if (!source || !target) throw new NotFoundError("ISSUE_NOT_FOUND", "Issue could not be found.")
+  if (source.project_id !== target.project_id) {
+    throw new AppError("INVALID_ISSUE", "Link issues in the same project.", 422)
+  }
+
+  const { error } = await supabase.from("issue_links").insert({
+    source_issue_id: sourceIssueId,
+    target_issue_id: targetIssueId,
+    link_type: linkType,
+    created_by: userId,
+  })
+
+  if (error) raiseIssueWriteError(error.message)
+  return source.project_id
+}
+
+export async function removeIssueLink(linkId: string, issueId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from("issue_links").delete().eq("id", linkId)
   if (error) raiseIssueWriteError(error.message)
   const { data: issue } = await supabase.from("issues").select("project_id").eq("id", issueId).maybeSingle()
   return issue?.project_id ?? null

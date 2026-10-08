@@ -6,6 +6,8 @@ import { CommentSection } from "@/components/issues/comment-section"
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
 import { IssueEditor } from "@/components/issues/issue-editor"
 import { LabelEditor } from "@/components/issues/label-editor"
+import { LinkSection } from "@/components/issues/link-section"
+import { SubtaskSection } from "@/components/issues/subtask-section"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -66,9 +68,17 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             }}
           />
           <CommentSection issueId={issue.id} currentUserId={user.id} comments={issue.comments} />
+          <SubtaskSection
+            issueId={issue.id}
+            projectKey={issue.projectKey}
+            parent={issue.parent}
+            subtasks={issue.subtasks}
+            archived={issue.projectArchived}
+          />
         </div>
         <div className="grid gap-4">
           <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
+          <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} />
           <section className="grid gap-2">
             <h2 className="text-sm font-medium">History</h2>
             {issue.history.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet.</p> : null}
