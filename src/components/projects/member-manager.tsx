@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { addProjectMember, removeProjectMember, updateMemberRole } from "@/lib/actions/projects"
+import { invitationWasSaved } from "@/lib/invitations/format"
 import { userInitials } from "@/lib/auth/user"
 import { roleLabel } from "@/lib/projects/format"
 import { addMemberSchema, projectRoles, type AddMemberValues, type ProjectRole } from "@/lib/validations/project"
@@ -63,6 +64,7 @@ export function MemberManager({
 }
 
 function AddMemberForm({ projectId, roles }: { projectId: string; roles: ProjectRole[] }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const form = useForm<AddMemberValues>({
@@ -75,6 +77,11 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
       const result = await addProjectMember(projectId, values)
       if (result?.error) {
         toast.error(result.error)
+        if (invitationWasSaved(result.error)) {
+          form.reset({ email: "", role: "member" })
+          setOpen(false)
+          router.refresh()
+        }
         return
       }
       form.reset({ email: "", role: "member" })

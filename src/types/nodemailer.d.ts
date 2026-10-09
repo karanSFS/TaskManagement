@@ -11,6 +11,6 @@ declare module "nodemailer" {
       subject: string
       html: string
       text: string
-    }): Promise<unknown>
+    }): Promise<{ rejected?: unknown[] }>
   }
 }

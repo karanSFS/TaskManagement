@@ -130,12 +130,13 @@ export async function addProjectMember(projectId: string, values: unknown): Prom
 
   try {
     const invite = await createInvitationRecord(projectId, parsed.data.email, parsed.data.role)
-    const warning = await sendInvitationEmail(invite, await siteOrigin())
+    const mailError = await sendInvitationEmail(invite, await siteOrigin())
     projectPaths(projectId)
     revalidatePath("/invitations")
     revalidatePath("/dashboard")
     revalidatePath("/notifications")
-    return { success: warning ?? "Invitation sent." }
+    if (mailError) return { error: mailError }
+    return { success: "Invitation sent." }
   } catch (error) {
     return failure(error, "addProjectMember", user.id, projectId)
   }
@@ -150,10 +151,11 @@ export async function resendProjectInvitation(projectId: string, invitationId: s
     const invite = invitations.find((item) => item.id === invitationId && item.status === "pending")
     if (!invite) return { error: "This invitation is no longer open." }
     const sent = await createInvitationRecord(projectId, invite.email, invite.role)
-    const warning = await sendInvitationEmail(sent, await siteOrigin())
+    const mailError = await sendInvitationEmail(sent, await siteOrigin())
     projectPaths(projectId)
     revalidatePath("/invitations")
-    return { success: warning ?? "Invitation sent." }
+    if (mailError) return { error: mailError }
+    return { success: "Invitation sent." }
   } catch (error) {
     return failure(error, "resendProjectInvitation", user.id, projectId)
   }

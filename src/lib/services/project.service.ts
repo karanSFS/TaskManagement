@@ -448,6 +448,17 @@ export async function removeProjectMemberRecord(actorId: string, projectId: stri
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
   }
 
+  const { data: still, error: stillError } = await supabase
+    .from("project_members")
+    .select("id")
+    .eq("id", membershipId)
+    .maybeSingle()
+
+  if (stillError) throw new DatabaseError("Could not confirm that member was removed.")
+  if (still) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+  }
+
   return removedUserId
 }
 

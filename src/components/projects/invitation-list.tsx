@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { resendProjectInvitation, revokeProjectInvitation } from "@/lib/actions/projects"
+import { invitationWasSaved } from "@/lib/invitations/format"
 import { invitationStatusLabel } from "@/lib/invitations/format"
 import { formatProjectDate, roleLabel } from "@/lib/projects/format"
 import type { ProjectInvitation } from "@/lib/services/invitation.service"
@@ -42,6 +43,8 @@ function InvitationRow({ projectId, invitation }: { projectId: string; invitatio
       const result = await action()
       if (result.error) {
         setError(result.error)
+        toast.error(result.error)
+        if (invitationWasSaved(result.error)) router.refresh()
         return
       }
       if (result.success) toast.success(result.success)
