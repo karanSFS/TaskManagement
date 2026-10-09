@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { AlarmClock, CalendarClock, CircleDot, ListTodo } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -79,21 +80,17 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
   const to = Math.min(work.page * work.pageSize, work.total)
 
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {views.map((item) => (
-          <SummaryCard
-            key={item.id}
-            href={workHref({ ...filters, view: item.id, page: undefined })}
-            active={view === item.id}
-            view={item.id}
-            label={item.label}
-            hint={item.hint}
-            value={countFor(item.id, work.counts)}
-            alert={item.id === "overdue" && work.counts.overdue > 0}
-          />
-        ))}
-      </div>
+    <WorkSwitcher
+      view={view}
+      cards={views.map((item) => ({
+        id: item.id,
+        href: workHref({ ...filters, view: item.id, page: undefined }),
+        label: item.label,
+        hint: item.hint,
+        value: countFor(item.id, work.counts),
+        alert: item.id === "overdue" && work.counts.overdue > 0,
+      }))}
+      toolbar={
       <form action="/my-work" className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="view" value={view} />
         <input name="q" defaultValue={filters.q} placeholder="Search title or KEY-1" aria-label="Search your work" className={`${fieldClass} w-full sm:w-56`} />
@@ -137,6 +134,8 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
           </p>
         ) : null}
       </form>
+      }
+    >
       {work.total === 0 ? (
         <EmptyWork view={view} filtered={filtered} />
       ) : (
@@ -200,48 +199,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
           ) : null}
         </div>
       ) : null}
-    </div>
-  )
-}
-
-function SummaryCard({
-  href,
-  active,
-  view,
-  label,
-  hint,
-  value,
-  alert,
-}: {
-  href: string
-  active: boolean
-  view: MyWorkView
-  label: string
-  hint: string
-  value: number
-  alert?: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={
-        active
-          ? "flex h-14 items-center gap-2.5 rounded-lg border border-primary bg-primary/5 px-3"
-          : "flex h-14 items-center gap-2.5 rounded-lg border bg-card px-3 hover:bg-muted/40"
-      }
-    >
-      <span className={active ? "flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary" : "flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"}>
-        <SummaryIcon view={view} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-medium leading-4">{label}</span>
-        <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{hint}</span>
-      </span>
-      <span className={alert ? "shrink-0 font-mono text-base font-semibold leading-none text-destructive tabular-nums" : "shrink-0 font-mono text-base font-semibold leading-none tabular-nums"}>
-        {value}
-      </span>
-    </Link>
+    </WorkSwitcher>
   )
 }
 
