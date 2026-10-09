@@ -185,6 +185,8 @@ export async function updateProfile(values: ProfileValues): Promise<ActionState>
   }
 
   revalidatePath("/", "layout")
+  revalidatePath("/settings")
+  revalidatePath("/settings/profile")
   return { success: "Profile updated." }
 }
 

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ListSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
 import { listMyWork, type MyWorkList } from "@/lib/services/issue.service"
@@ -16,7 +16,7 @@ export default function MyWorkPage() {
         title="My Work"
         description="Open issues assigned to you, reported by you, and due within 7 days."
       />
-      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+      <Suspense fallback={<ListSkeleton />}>
         <MyWorkLists />
       </Suspense>
     </div>

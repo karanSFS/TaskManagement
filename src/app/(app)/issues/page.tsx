@@ -5,7 +5,7 @@ import { CircleDot } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ListSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { issueKey } from "@/lib/projects/format"
 import { getIssueCatalog, listIssueProjects, listIssues } from "@/lib/services/issue.service"
@@ -40,7 +40,7 @@ export default function IssuesPage({ searchParams }: { searchParams: Promise<Iss
           </Button>
         }
       />
-      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+      <Suspense fallback={<ListSkeleton />}>
         <IssueList searchParams={searchParams} />
       </Suspense>
     </div>

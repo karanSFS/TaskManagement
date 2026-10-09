@@ -41,7 +41,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => router.push("/settings/profile")}>
+        <DropdownMenuItem onSelect={() => router.push("/settings")}>
           <UserRound />
           Profile
         </DropdownMenuItem>

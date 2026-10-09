@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js"
 
 export function displayName(user: User) {
-  const fullName = user.user_metadata.full_name
+  const fullName = user.user_metadata?.full_name
   if (typeof fullName === "string" && fullName.trim()) {
     return fullName.trim()
   }

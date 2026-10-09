@@ -330,12 +330,34 @@ export async function listMyWork(userId: string): Promise<MyWork> {
   if (assigned.error || reported.error || dueSoon.error) {
     throw new DatabaseError("Could not load your work.")
   }
+  if (assigned.count === null || reported.count === null || dueSoon.count === null) {
+    throw new DatabaseError("Could not load your work.")
+  }
 
   return {
     assigned: toMyWorkList(assigned.data, assigned.count),
     reported: toMyWorkList(reported.data, reported.count),
     dueSoon: toMyWorkList(dueSoon.data, dueSoon.count),
   }
+}
+
+export async function countOverdueIssues() {
+  const catalog = await getIssueCatalog()
+  const openStatusIds = catalog.statuses.filter((status) => status.category !== "done").map((status) => status.id)
+  if (openStatusIds.length === 0) {
+    throw new DatabaseError("Could not load overdue issues.")
+  }
+
+  const supabase = await createClient()
+  const { count, error } = await supabase
+    .from("issues")
+    .select("id", { count: "exact", head: true })
+    .in("status_id", openStatusIds)
+    .not("due_date", "is", null)
+    .lt("due_date", isoDate(0))
+
+  if (error || count === null) throw new DatabaseError("Could not load overdue issues.")
+  return count
 }
 
 function isoDate(offsetDays: number) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -25,6 +26,7 @@ type ProfileFormProps = {
 }
 
 export function ProfileForm({ email, fullName }: ProfileFormProps) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -42,6 +44,7 @@ export function ProfileForm({ email, fullName }: ProfileFormProps) {
       }
       setSavedName(values.fullName)
       toast.success(result?.success ?? "Profile updated.")
+      router.refresh()
     })
   }
 
