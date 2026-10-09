@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
         <ResetPasswordForm />
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
-        <Link href="/forgot-password" className="font-medium text-foreground hover:underline">
+        <Link href="/forgot-password" className="font-medium text-info hover:underline">
           Request a new link
         </Link>
       </CardFooter>

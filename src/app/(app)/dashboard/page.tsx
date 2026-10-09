@@ -201,16 +201,16 @@ function Metric({
 }
 
 function MetricIcon({ name }: { name: "projects" | "issues" | "assigned" | "overdue" }) {
-  const className = "size-4 text-muted-foreground"
+  const className = "size-4"
   switch (name) {
     case "projects":
-      return <FolderKanban className={className} />
+      return <FolderKanban className={`${className} text-primary`} />
     case "issues":
-      return <CircleDot className={className} />
+      return <CircleDot className={`${className} text-info`} />
     case "assigned":
-      return <ListTodo className={className} />
+      return <ListTodo className={`${className} text-primary`} />
     default:
-      return <AlarmClock className={className} />
+      return <AlarmClock className={`${className} text-warning`} />
   }
 }
 
@@ -229,7 +229,7 @@ function Panel({
     <section className="overflow-hidden rounded-lg border bg-card">
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         <h2 className="text-sm font-medium">{title}</h2>
-        <Link href={href} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+        <Link href={href} className="text-xs text-info hover:underline">
           {action}
         </Link>
       </div>

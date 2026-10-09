@@ -138,7 +138,7 @@ function mapNotification(row: {
     body: row.body,
     readAt: row.read_at,
     createdAt: row.created_at,
-    actorName: one(row.actor)?.display_name ?? "TaskForge",
+    actorName: one(row.actor)?.display_name ?? "FixTask",
     issueId: row.issue_id,
     projectId: row.project_id,
     issueKey: key,

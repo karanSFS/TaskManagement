@@ -1,7 +1,8 @@
 {
-  "name": "taskforge",
+  "name": "fixtask",
   "version": "0.1.0",
   "private": true,
+  "description": "FixTask — Plan together. Solve faster. Ship better.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

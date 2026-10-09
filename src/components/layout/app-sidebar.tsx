@@ -26,7 +26,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-3">
-        <Link href="/dashboard" className="flex items-center" aria-label="TaskForge home">
+        <Link href="/dashboard" className="flex items-center" aria-label="FixTask home">
           <Logo />
         </Link>
       </SidebarHeader>

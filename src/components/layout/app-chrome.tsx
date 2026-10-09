@@ -37,7 +37,7 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur md:px-4">
+      <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-card/95 px-3 shadow-sm backdrop-blur md:px-4">
         <SidebarTrigger />
         <Button
           variant="outline"

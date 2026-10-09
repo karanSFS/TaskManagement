@@ -33,7 +33,7 @@ async function MembersContent({ params }: { params: Promise<{ projectId: string 
     <div className="grid gap-3">
       <p className="text-sm text-muted-foreground">
         {canManage
-          ? "Add someone who already has a TaskForge account. Owners and admins can change roles and remove members."
+          ? "Add someone who already has a FixTask account. Owners and admins can change roles and remove members."
           : "You can leave this project. Owners and admins can add people, change roles, and remove members."}
       </p>
       <MemberManager

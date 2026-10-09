@@ -94,7 +94,7 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
         setOpen(next)
       }}
       title="Add member"
-      description="They must already have a TaskForge account. Access follows this project's permissions."
+      description="They must already have a FixTask account. Access follows this project's permissions."
       dirty={form.formState.isDirty}
       pending={pending}
     >

@@ -1,10 +1,10 @@
-# TaskForge plan
+# FixTask plan
 
-Ship work, not tickets.
+Plan together. Solve faster. Ship better.
 
-This file is the source of truth for continuing TaskForge in another IDE, machine, or chat. Read it before writing code. When a phase is finished, update this file and `README.md` in the same change. Do not start the next phase until it is requested.
+This file is the source of truth for continuing FixTask in another IDE, machine, or chat. Read it before writing code. When a phase is finished, update this file and `README.md` in the same change. Do not start the next phase until it is requested.
 
-The visual system, name, and interface are TaskForge's own. The workflow can feel familiar. Do not copy another product's branding, layout, or copy.
+The visual system, name, and interface are FixTask's own. The workflow can feel familiar. Do not copy another product's branding, layout, or copy.
 
 ## Status
 
@@ -32,10 +32,10 @@ The latest issues commit is local on `main` and may be ahead of `origin/main`. V
 
 ## Product
 
-TaskForge is a project and issue manager for personal and small-team use.
+FixTask is a project and issue manager for personal and small-team use.
 
 - Compact developer UI. Lists, not giant cards.
-- Light and dark. Forge ember (orange-amber) is the accent. Steel teal is the focus and info color.
+- Light and dark. Indigo (`#4F46E5`) is the primary. Electric blue (`#2563EB`) is for links and information. Deep teal (`#0F766E`) is for progress.
 - Keyboard: `/` searches issues and jumps between pages, `C` opens new issue, `⌘/Ctrl+B` collapses the sidebar. Ignore shortcuts while typing in a field.
 
 ## Stack

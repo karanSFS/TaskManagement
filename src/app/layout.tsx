@@ -21,11 +21,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "FixTask",
   title: {
-    default: "TaskForge",
-    template: "%s · TaskForge",
+    default: "FixTask",
+    template: "%s · FixTask",
   },
-  description: "Ship work, not tickets.",
+  description: "FixTask — Plan together. Solve faster. Ship better.",
+  openGraph: {
+    title: "FixTask",
+    description: "Plan together. Solve faster. Ship better.",
+    siteName: "FixTask",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

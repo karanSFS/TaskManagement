@@ -19,7 +19,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="flex min-h-svh flex-col items-center justify-center gap-3 bg-background px-4 text-center text-foreground">
         <main id="content">
-          <h1 className="text-lg font-semibold">TaskForge hit an error</h1>
+          <h1 className="text-lg font-semibold">FixTask hit an error</h1>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">The page could not be rendered. Try again.</p>
           <button
             type="button"

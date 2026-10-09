@@ -315,18 +315,18 @@ function priorityClass(priority: string) {
     case "Highest":
       return "border-l-destructive"
     case "High":
-      return "border-l-orange-500"
+      return "border-l-warning"
     case "Medium":
-      return "border-l-amber-500"
+      return "border-l-info"
     case "Low":
-      return "border-l-sky-500"
+      return "border-l-success"
     default:
       return "border-l-border"
   }
 }
 
 function categoryDot(category: string) {
-  if (category === "done") return "bg-chart-2"
-  if (category === "in_progress") return "bg-chart-1"
+  if (category === "done") return "bg-success"
+  if (category === "in_progress") return "bg-info"
   return "bg-muted-foreground/50"
 }

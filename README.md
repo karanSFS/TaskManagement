@@ -1,8 +1,8 @@
-# TaskForge
+# FixTask
 
-Ship work, not tickets.
+Plan together. Solve faster. Ship better.
 
-TaskForge is a project and issue manager for personal and small-team use. The interface, name, and visual system are TaskForge's own.
+FixTask is a project and issue manager for personal and small-team use. The interface, name, and visual system are FixTask's own.
 
 The living plan is [PLAN.md](PLAN.md). Read it before starting a phase. When a phase is finished, update both `PLAN.md` and this README.
 

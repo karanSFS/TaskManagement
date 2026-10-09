@@ -79,8 +79,8 @@ function raiseProjectWriteError(message: string): never {
     throw new AppError("LAST_OWNER", "A project must keep at least one owner.", 409)
   }
 
-  if (message.includes("No TaskForge account")) {
-    throw new NotFoundError("MEMBER_NOT_FOUND", "No TaskForge account uses that email")
+  if (message.includes("account uses that email")) {
+    throw new NotFoundError("MEMBER_NOT_FOUND", "No FixTask account uses that email")
   }
 
   if (message.includes("already a member")) {

@@ -643,7 +643,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
       field: entry.field,
       createdAt: entry.created_at,
       summary: historySummary(entry.field, entry.new_value, names),
-      actorName: entry.actor_id ? (actorNames.get(entry.actor_id) ?? "Former member") : "TaskForge",
+      actorName: entry.actor_id ? (actorNames.get(entry.actor_id) ?? "Former member") : "FixTask",
     })),
     parent: parent.data
       ? { id: parent.data.id, number: parent.data.issue_number, title: parent.data.title }
@@ -751,7 +751,7 @@ export async function listRecentActivity(userId: string): Promise<ActivityItem[]
       id: row.id,
       summary: historySummary(row.field, row.new_value, names),
       createdAt: row.created_at,
-      actorName: row.actor_id ? (names.get(row.actor_id) ?? "Former member") : "TaskForge",
+      actorName: row.actor_id ? (names.get(row.actor_id) ?? "Former member") : "FixTask",
       issueId: issue.id,
       issueKey: issueKey(project.key, issue.issue_number),
       issueTitle: issue.title,

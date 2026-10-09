@@ -19,14 +19,14 @@ export default function SignupPage() {
     <Card>
       <CardHeader>
         <CardTitle>Create account</CardTitle>
-        <CardDescription>A workspace for the work you actually ship.</CardDescription>
+        <CardDescription>Plan together. Solve faster. Ship better.</CardDescription>
       </CardHeader>
       <CardContent>
         <SignupForm />
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-foreground hover:underline">
+        <Link href="/login" className="font-medium text-info hover:underline">
           Sign in
         </Link>
       </CardFooter>

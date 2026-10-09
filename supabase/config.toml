@@ -246,11 +246,11 @@ otp_expiry = 3600
 
 # Local auth emails use token_hash links handled by /auth/confirm.
 [auth.email.template.confirmation]
-subject = "Confirm your TaskForge account"
+subject = "Confirm your FixTask account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your TaskForge password"
+subject = "Reset your FixTask password"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template

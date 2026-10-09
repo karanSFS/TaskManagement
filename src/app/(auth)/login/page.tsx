@@ -25,7 +25,7 @@ export default function LoginPage({
     <Card>
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
-        <CardDescription>Use your TaskForge account to get back to work.</CardDescription>
+        <CardDescription>Use your FixTask account to get back to work.</CardDescription>
       </CardHeader>
       <CardContent>
         <Suspense fallback={<p className="text-sm text-muted-foreground">Loading sign in…</p>}>
@@ -34,7 +34,7 @@ export default function LoginPage({
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
         New here?{" "}
-        <Link href="/signup" className="font-medium text-foreground hover:underline">
+        <Link href="/signup" className="font-medium text-info hover:underline">
           Create an account
         </Link>
       </CardFooter>

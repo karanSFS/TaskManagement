@@ -54,7 +54,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Search TaskForge"
+      title="Search FixTask"
       description="Search issues by key, title, or label, or jump to a page."
     >
       <Command shouldFilter={false}>
