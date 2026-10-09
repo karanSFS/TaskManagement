@@ -1,5 +1,6 @@
 import {
   Bell,
+  Mail,
   ChartColumn,
   CircleDot,
   CalendarRange,
@@ -80,6 +81,13 @@ export const mainNav: NavItem[] = [
 ]
 
 export const utilityNav: NavItem[] = [
+  {
+    title: "Invitations",
+    href: "/invitations",
+    icon: Mail,
+    description: "Accept or reject project invitations sent to you.",
+    phase: "Phase 3",
+  },
   {
     title: "Notifications",
     href: "/notifications",

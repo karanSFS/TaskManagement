@@ -1,13 +1,21 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 
 import { actionError } from "@/lib/actions/result"
 import { type ActionState } from "@/lib/auth/paths"
 import { getCurrentUser } from "@/lib/auth/session"
 import { AppError } from "@/lib/errors/app-error"
+import { sendInvitationEmail } from "@/lib/mail/invitation"
 import {
-  addProjectMemberRecord,
+  createInvitationRecord,
+  listMyInvitations,
+  listProjectInvitations,
+  respondToInvitationRecord,
+  revokeInvitationRecord,
+} from "@/lib/services/invitation.service"
+import {
   createProjectRecord,
   deleteArchivedProjectRecord,
   removeProjectMemberRecord,
@@ -22,6 +30,15 @@ import {
   updateProjectSchema,
   type ProjectRole,
 } from "@/lib/validations/project"
+
+async function siteOrigin() {
+  const headerStore = await headers()
+  const origin = headerStore.get("origin")
+  if (origin) return origin
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host")
+  const proto = headerStore.get("x-forwarded-proto") ?? "https"
+  return host ? `${proto}://${host}` : "http://localhost:3000"
+}
 
 function projectPaths(projectId: string) {
   revalidatePath("/projects")
@@ -112,11 +129,71 @@ export async function addProjectMember(projectId: string, values: unknown): Prom
   }
 
   try {
-    await addProjectMemberRecord(user.id, projectId, parsed.data)
+    const invite = await createInvitationRecord(projectId, parsed.data.email, parsed.data.role)
+    const warning = await sendInvitationEmail(invite, await siteOrigin())
     projectPaths(projectId)
-    return { success: "Member added." }
+    revalidatePath("/invitations")
+    revalidatePath("/dashboard")
+    revalidatePath("/notifications")
+    return { success: warning ?? "Invitation sent." }
   } catch (error) {
     return failure(error, "addProjectMember", user.id, projectId)
+  }
+}
+
+export async function resendProjectInvitation(projectId: string, invitationId: string): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to manage members." }
+
+  try {
+    const invitations = await listProjectInvitations(projectId)
+    const invite = invitations.find((item) => item.id === invitationId && item.status === "pending")
+    if (!invite) return { error: "This invitation is no longer open." }
+    const sent = await createInvitationRecord(projectId, invite.email, invite.role)
+    const warning = await sendInvitationEmail(sent, await siteOrigin())
+    projectPaths(projectId)
+    revalidatePath("/invitations")
+    return { success: warning ?? "Invitation sent." }
+  } catch (error) {
+    return failure(error, "resendProjectInvitation", user.id, projectId)
+  }
+}
+
+export async function revokeProjectInvitation(projectId: string, invitationId: string): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to manage members." }
+
+  try {
+    await revokeInvitationRecord(invitationId)
+    projectPaths(projectId)
+    revalidatePath("/invitations")
+    revalidatePath("/notifications")
+    return { success: "Invitation cancelled." }
+  } catch (error) {
+    return failure(error, "revokeProjectInvitation", user.id, projectId)
+  }
+}
+
+export async function respondToInvitation(invitationId: string, decision: "accept" | "reject"): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to answer this invitation." }
+
+  try {
+    const mine = user.email ? await listMyInvitations(user.email) : []
+    const invite = mine.find((item) => item.id === invitationId)
+    await respondToInvitationRecord(invitationId, decision)
+    revalidatePath("/invitations")
+    revalidatePath("/projects")
+    revalidatePath("/dashboard")
+    revalidatePath("/notifications")
+    revalidatePath("/my-work")
+    if (invite) revalidatePath(`/projects/${invite.projectId}`)
+    return {
+      success: decision === "accept" ? "Invitation accepted." : "Invitation rejected.",
+      href: decision === "accept" && invite ? `/projects/${invite.projectId}` : undefined,
+    }
+  } catch (error) {
+    return failure(error, "respondToInvitation", user.id, invitationId)
   }
 }
 

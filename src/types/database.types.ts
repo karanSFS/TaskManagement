@@ -621,6 +621,63 @@ export type Database = {
           },
         ]
       }
+      project_invitations: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          invitee_notified: boolean
+          project_id: string
+          responded_at: string | null
+          role: string
+          status: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          invitee_notified?: boolean
+          project_id: string
+          responded_at?: string | null
+          role: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          invitee_notified?: boolean
+          project_id?: string
+          responded_at?: string | null
+          role?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           archived_at: string | null
@@ -773,6 +830,30 @@ export type Database = {
       remove_project_member: {
         Args: { target_membership_id: string }
         Returns: string
+      }
+      create_project_invitation: {
+        Args: {
+          member_email: string
+          member_role: string
+          target_project_id: string
+        }
+        Returns: Json
+      }
+      invitation_preview: {
+        Args: { target_token: string }
+        Returns: Json
+      }
+      respond_to_invitation: {
+        Args: { decision: string; target_invitation_id: string }
+        Returns: undefined
+      }
+      revoke_project_invitation: {
+        Args: { target_invitation_id: string }
+        Returns: undefined
+      }
+      sync_invitations: {
+        Args: never
+        Returns: undefined
       }
       add_project_member: {
         Args: {

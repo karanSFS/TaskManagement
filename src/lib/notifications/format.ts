@@ -12,6 +12,16 @@ export function notificationLabel(kind: string) {
       return "Added you to a project"
     case "sprint_changed":
       return "Changed the sprint"
+    case "project_invited":
+      return "Invited you to a project"
+    case "invitation_accepted":
+      return "Accepted your invitation"
+    case "invitation_rejected":
+      return "Rejected your invitation"
+    case "invitation_expired":
+      return "Invitation expired"
+    case "invitation_revoked":
+      return "Cancelled an invitation"
     default:
       return "Notification"
   }
@@ -37,13 +47,27 @@ export const notificationKinds = [
   "issue_updated",
   "project_member_added",
   "sprint_changed",
+  "project_invited",
+  "invitation_accepted",
+  "invitation_rejected",
+  "invitation_expired",
+  "invitation_revoked",
 ] as const
 
 export function isNotificationKind(value: string): value is (typeof notificationKinds)[number] {
   return notificationKinds.some((kind) => kind === value)
 }
 
-export function notificationHref(item: { issueId: string | null; projectId: string | null }) {
+export function notificationHref(item: { kind?: string; issueId: string | null; projectId: string | null }) {
+  if (
+    item.kind === "project_invited" ||
+    item.kind === "invitation_accepted" ||
+    item.kind === "invitation_rejected" ||
+    item.kind === "invitation_expired" ||
+    item.kind === "invitation_revoked"
+  ) {
+    return "/invitations"
+  }
   if (item.issueId) return `/issues/${item.issueId}`
   if (item.projectId) return `/projects/${item.projectId}`
   return "/notifications"

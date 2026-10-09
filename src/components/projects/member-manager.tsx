@@ -79,14 +79,14 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
       }
       form.reset({ email: "", role: "member" })
       setOpen(false)
-      toast.success(result?.success ?? "Member added.")
+      toast.success(result?.success ?? "Invitation sent.")
     })
   }
 
   return (
     <>
     <RevealButton type="button" className="w-fit" onReveal={() => setOpen(true)}>
-      Add member
+      Invite
     </RevealButton>
     <FormDialog
       open={open}
@@ -94,8 +94,8 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
         if (!next) form.reset({ email: "", role: "member" })
         setOpen(next)
       }}
-      title="Add member"
-      description="They must already have a FixTask account. Access follows this project's permissions."
+      title="Invite"
+      description="They receive an email and have 7 days to accept. A new person can create a FixTask account from that link."
       dirty={form.formState.isDirty}
       pending={pending}
     >
@@ -138,7 +138,7 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
             Cancel
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "Adding…" : "Add member"}
+            {pending ? "Sending…" : "Send invitation"}
           </Button>
         </div>
       </form>

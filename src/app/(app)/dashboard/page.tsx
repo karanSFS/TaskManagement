@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { getCurrentUser } from "@/lib/auth/session"
 import { displayName } from "@/lib/auth/user"
 import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
+import { listMyInvitations } from "@/lib/services/invitation.service"
 import { countOverdueIssues, listMyWork, listRecentActivity, type MyWorkItem } from "@/lib/services/issue.service"
 import { getProjects, type ProjectSummary } from "@/lib/services/project.service"
 import { listActiveSprintProgress } from "@/lib/services/sprint.service"
@@ -34,12 +35,13 @@ async function HomeContent() {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const [projects, work, activity, overdue, sprints] = await Promise.all([
+  const [projects, work, activity, overdue, sprints, invitations] = await Promise.all([
     getProjects(user.id),
     listMyWork(user.id),
     listRecentActivity(user.id),
     countOverdueIssues(),
     listActiveSprintProgress(),
+    user.email ? listMyInvitations(user.email) : Promise.resolve([]),
   ])
 
   const active = projects.filter((project) => !project.archivedAt)
@@ -49,6 +51,7 @@ async function HomeContent() {
   const today = new Date().toISOString().slice(0, 10)
   const name = displayName(user)
   const summary = homeSummary(openIssues, work.assigned.total, overdue)
+  const pendingInvites = invitations.filter((invitation) => invitation.status === "pending").length
 
   return (
     <div className="grid gap-5">
@@ -72,6 +75,15 @@ async function HomeContent() {
           </div>
         </div>
       </section>
+
+      {pendingInvites > 0 ? (
+        <p className="rounded-xl border bg-card px-4 py-3 text-sm">
+          You have {pendingInvites === 1 ? "a pending invitation" : `${pendingInvites} pending invitations`}.{" "}
+          <Link href="/invitations" className="font-medium text-info hover:underline">
+            Review invitations
+          </Link>
+        </p>
+      ) : null}
 
       <dl className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <MetricLink href="/projects" label="Active projects" value={active.length} hint={archived.length > 0 ? `${archived.length} archived` : "Workspaces you belong to"} tone="bg-primary" icon={<FolderKanban className="size-4" />} />

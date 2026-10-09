@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { signUp } from "@/lib/actions/auth"
 import { signupSchema, type SignupValues } from "@/lib/validations/auth"
 
-export function SignupForm() {
+export function SignupForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
   const [pending, startTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -31,7 +31,7 @@ export function SignupForm() {
     setFormError(null)
     setSuccess(null)
     startTransition(async () => {
-      const result = await signUp(values)
+      const result = await signUp(nextPath, values)
       if (result?.error) {
         setFormError(result.error)
         toast.error(result.error)

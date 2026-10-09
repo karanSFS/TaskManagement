@@ -66,7 +66,11 @@ function asRole(role: string): ProjectRole {
   return isProjectRole(role) ? role : "member"
 }
 
-function raiseProjectWriteError(message: string): never {
+export function raiseProjectWriteError(message: string): never {
+  if (message.includes("project_invitations_one_pending")) {
+    throw new AppError("INVITATION_EXISTS", "An invitation is already pending for that email.", 409)
+  }
+
   if (message.includes("projects_key_key") || message.includes("duplicate key")) {
     throw new AppError("DUPLICATE_PROJECT_KEY", "That project key is already in use.", 409)
   }
@@ -117,6 +121,22 @@ function raiseProjectWriteError(message: string): never {
 
   if (message.includes("Role must be")) {
     throw new ValidationError("Role must be owner, admin, or member")
+  }
+
+  if (message.includes("This invitation has expired")) {
+    throw new AppError("INVITATION_EXPIRED", "This invitation has expired.", 409)
+  }
+
+  if (message.includes("sent to another email")) {
+    throw new AuthorizationError("INVITATION_EMAIL", "This invitation was sent to another email.")
+  }
+
+  if (message.includes("no longer open")) {
+    throw new AppError("INVITATION_CLOSED", "This invitation is no longer open.", 409)
+  }
+
+  if (message.includes("Choose accept or reject")) {
+    throw new ValidationError("Choose accept or reject.")
   }
 
   throw new DatabaseError("Could not save the project. Try again.")
@@ -341,24 +361,6 @@ export async function setProjectArchived(_userId: string, projectId: string, arc
 
   if (!data?.length) {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot edit this project.")
-  }
-}
-
-export async function addProjectMemberRecord(
-  userId: string,
-  projectId: string,
-  input: { email: string; role: ProjectRole },
-) {
-  await requireManager(projectId, userId, input.role)
-  const supabase = await createClient()
-  const { error } = await supabase.rpc("add_project_member", {
-    target_project_id: projectId,
-    member_email: input.email,
-    member_role: input.role,
-  })
-
-  if (error) {
-    raiseProjectWriteError(error.message)
   }
 }
 

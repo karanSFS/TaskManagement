@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
+import { InvitationList } from "@/components/projects/invitation-list"
 import { MemberManager } from "@/components/projects/member-manager"
 import { DetailSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
+import { listProjectInvitations } from "@/lib/services/invitation.service"
 import { getProject } from "@/lib/services/project.service"
 
 export const metadata = { title: "Members" }
@@ -28,6 +30,7 @@ async function MembersContent({ params }: { params: Promise<{ projectId: string 
   }
 
   const canManage = project.role === "owner" || project.role === "admin"
+  const invitations = canManage ? await listProjectInvitations(project.id) : []
 
   return (
     <div className="grid gap-3">
@@ -36,7 +39,7 @@ async function MembersContent({ params }: { params: Promise<{ projectId: string 
       </h2>
       <p className="text-sm text-muted-foreground">
         {canManage
-          ? "Add someone who already has a FixTask account. Owners and admins can change roles and remove members."
+          ? "Invite someone by email. They accept before they join. Owners and admins can change roles and remove members."
           : "You can leave this project. Owners and admins can add people, change roles, and remove members."}
       </p>
       <MemberManager
@@ -48,6 +51,7 @@ async function MembersContent({ params }: { params: Promise<{ projectId: string 
           isYou: member.userId === user.id,
         }))}
       />
+      {canManage ? <InvitationList projectId={project.id} invitations={invitations} /> : null}
     </div>
   )
 }

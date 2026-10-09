@@ -1,6 +1,6 @@
 "use client"
 
-import { AtSign, Bell, CalendarRange, FolderPlus, MessageSquare, Pencil, UserRound } from "lucide-react"
+import { AtSign, Bell, CalendarRange, Check, Clock, FolderPlus, Mail, MessageSquare, Pencil, UserRound, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTransition, type ReactNode } from "react"
 import { toast } from "sonner"
@@ -117,6 +117,16 @@ function kindIcon(kind: string): ReactNode {
       return <FolderPlus className={className} />
     case "sprint_changed":
       return <CalendarRange className={className} />
+    case "project_invited":
+      return <Mail className={className} />
+    case "invitation_accepted":
+      return <Check className={className} />
+    case "invitation_rejected":
+      return <X className={className} />
+    case "invitation_expired":
+      return <Clock className={className} />
+    case "invitation_revoked":
+      return <X className={className} />
     default:
       return <Bell className={className} />
   }

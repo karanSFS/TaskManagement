@@ -56,6 +56,11 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxSearch> }) {
               <option value="issue_updated">{notificationLabel("issue_updated")}</option>
               <option value="project_member_added">{notificationLabel("project_member_added")}</option>
               <option value="sprint_changed">{notificationLabel("sprint_changed")}</option>
+              <option value="project_invited">{notificationLabel("project_invited")}</option>
+              <option value="invitation_accepted">{notificationLabel("invitation_accepted")}</option>
+              <option value="invitation_rejected">{notificationLabel("invitation_rejected")}</option>
+              <option value="invitation_expired">{notificationLabel("invitation_expired")}</option>
+              <option value="invitation_revoked">{notificationLabel("invitation_revoked")}</option>
             </select>
           </FilterField>
         </FilterDrawer>

@@ -75,7 +75,7 @@ export async function signIn(nextPath: string, values: LoginValues): Promise<Act
   redirect(safeNextPath(nextPath))
 }
 
-export async function signUp(values: SignupValues): Promise<ActionState> {
+export async function signUp(nextPath: string, values: SignupValues): Promise<ActionState> {
   const parsed = signupSchema.safeParse(values)
   if (!parsed.success) {
     return { error: "Check the form and try again." }
@@ -88,7 +88,7 @@ export async function signUp(values: SignupValues): Promise<ActionState> {
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${origin}/auth/confirm?next=/dashboard`,
+      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(safeNextPath(nextPath))}`,
     },
   })
 
@@ -97,7 +97,7 @@ export async function signUp(values: SignupValues): Promise<ActionState> {
   }
 
   if (data.session) {
-    redirect("/dashboard")
+    redirect(safeNextPath(nextPath))
   }
 
   // An existing confirmed email comes back as a user with no identities.

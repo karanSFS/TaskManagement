@@ -27,17 +27,9 @@ export default function LoginPage({
         <CardTitle>Sign in</CardTitle>
         <CardDescription>Use your FixTask account to get back to work.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Suspense fallback={<p className="text-sm text-muted-foreground">Loading sign in…</p>}>
-          <LoginFields searchParams={searchParams} />
-        </Suspense>
-      </CardContent>
-      <CardFooter className="text-xs text-muted-foreground">
-        New here?{" "}
-        <Link href="/signup" className="font-medium text-info hover:underline">
-          Create an account
-        </Link>
-      </CardFooter>
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading sign in…</p>}>
+        <LoginFields searchParams={searchParams} />
+      </Suspense>
     </Card>
   )
 }
@@ -48,5 +40,19 @@ async function LoginFields({
   searchParams: Promise<{ next?: string; error?: string }>
 }) {
   const params = await searchParams
-  return <LoginForm nextPath={safeNextPath(params.next)} confirmError={params.error === "confirm"} />
+  const nextPath = safeNextPath(params.next)
+  const signupHref = nextPath === "/dashboard" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`
+  return (
+    <>
+      <CardContent>
+        <LoginForm nextPath={nextPath} confirmError={params.error === "confirm"} />
+      </CardContent>
+      <CardFooter className="text-xs text-muted-foreground">
+        New here?{" "}
+        <Link href={signupHref} className="font-medium text-info hover:underline">
+          Create an account
+        </Link>
+      </CardFooter>
+    </>
+  )
 }
