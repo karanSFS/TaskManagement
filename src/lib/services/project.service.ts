@@ -64,7 +64,7 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 
 function asRole(role: string): ProjectRole {
   return isProjectRole(role) ? role : "member"
-}
+}  
 
 export function raiseProjectWriteError(message: string): never {
   if (message.includes("project_invitations_one_pending")) {
