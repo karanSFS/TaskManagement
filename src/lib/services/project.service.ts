@@ -28,6 +28,7 @@ export type ProjectSummary = {
   archivedAt: string | null
   role: ProjectRole
   memberCount: number
+  roster: { id: string; name: string }[]
   openIssueCount: number
   doneIssueCount: number
 }
@@ -138,7 +139,7 @@ async function requireManager(projectId: string, userId: string, role: ProjectRo
 const getIssueCounts = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc("project_issue_counts")
-  if (error) {
+  if (error || data === null) {
     throw new DatabaseError("Could not load issue counts.")
   }
 
@@ -151,7 +152,7 @@ export const getProjects = cache(async (userId: string): Promise<ProjectSummary[
     supabase
       .from("projects")
       .select(
-        "id, name, key, description, icon, lead_id, created_at, archived_at, lead:profiles!projects_lead_id_fkey(display_name), project_members(user_id, role)",
+        "id, name, key, description, icon, lead_id, created_at, archived_at, lead:profiles!projects_lead_id_fkey(display_name), project_members(user_id, role, profile:profiles!project_members_user_id_fkey(display_name))",
       )
       .order("name"),
     getIssueCounts(),
@@ -162,10 +163,16 @@ export const getProjects = cache(async (userId: string): Promise<ProjectSummary[
   }
 
   return (projects ?? []).map((project) => {
-    const members = project.project_members ?? []
-    const mine = members.find((member) => member.user_id === userId)
+    const memberships = project.project_members ?? []
+    const mine = memberships.find((member) => member.user_id === userId)
     const tally = counts.get(project.id) ?? { open: 0, done: 0 }
     const lead = one(project.lead as ProfileEmbed)
+    const members = memberships
+      .map((member) => ({
+        id: member.user_id,
+        name: one(member.profile as ProfileEmbed)?.display_name ?? "Member",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
 
     return {
       id: project.id,
@@ -179,6 +186,7 @@ export const getProjects = cache(async (userId: string): Promise<ProjectSummary[
       archivedAt: project.archived_at,
       role: asRole(mine?.role ?? "member"),
       memberCount: members.length,
+      roster: members,
       openIssueCount: tally.open,
       doneIssueCount: tally.done,
     }
@@ -255,6 +263,7 @@ export const getProject = cache(async (projectId: string, userId: string): Promi
     nextIssueNumber: project.next_issue_number,
     role: asRole(mine?.role ?? "member"),
     memberCount: members.length,
+    roster: members.map((member) => ({ id: member.userId, name: member.name })),
     openIssueCount: tally.open,
     doneIssueCount: tally.done,
     members: members.sort((a, b) => a.name.localeCompare(b.name)),

@@ -43,6 +43,7 @@ type MemberOption = {
 type FrameProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  takenKeys?: string[]
 }
 
 type ProjectFormProps = FrameProps &
@@ -61,7 +62,14 @@ type ProjectFormProps = FrameProps &
 
 export function ProjectForm(props: ProjectFormProps) {
   if (props.mode === "create") {
-    return <CreateProjectForm defaultValues={props.defaultValues} open={props.open} onOpenChange={props.onOpenChange} />
+    return (
+      <CreateProjectForm
+        defaultValues={props.defaultValues}
+        open={props.open}
+        onOpenChange={props.onOpenChange}
+        takenKeys={props.takenKeys}
+      />
+    )
   }
 
   return (
@@ -79,6 +87,7 @@ function CreateProjectForm({
   defaultValues,
   open,
   onOpenChange,
+  takenKeys,
 }: { defaultValues: CreateProjectValues } & FrameProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -92,9 +101,17 @@ function CreateProjectForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
+          const taken = new Set((takenKeys ?? []).map((key) => key.toUpperCase()))
+          if (taken.has(values.key.toUpperCase())) {
+            form.setError("key", { message: "That project key is already in use." })
+            return
+          }
           startTransition(async () => {
             const result = await createProject(values)
             if (result?.error) {
+              if (result.error.toLowerCase().includes("key")) {
+                form.setError("key", { message: result.error })
+              }
               toast.error(result.error)
               return
             }

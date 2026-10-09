@@ -50,6 +50,23 @@ export function MyWorkSkeleton() {
     </div>
   )
 }
+export function ProjectsSkeleton() {
+  return (
+    <div className="grid gap-3" role="status" aria-live="polite">
+      <p className="sr-only">Loading projects</p>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+      </div>
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  )
+}
+
 export function FormSkeleton() {
   return (
     <div className="grid max-w-md gap-3" role="status" aria-live="polite">

@@ -7,7 +7,15 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { setProjectArchived } from "@/lib/actions/projects"
 
-export function ArchiveProjectButton({ projectId, archived }: { projectId: string; archived: boolean }) {
+export function ArchiveProjectButton({
+  projectId,
+  archived,
+  compact = false,
+}: {
+  projectId: string
+  archived: boolean
+  compact?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -25,8 +33,14 @@ export function ArchiveProjectButton({ projectId, archived }: { projectId: strin
 
   return (
     <>
-      <Button type="button" variant={archived ? "outline" : "destructive"} disabled={pending} onClick={() => (archived ? run() : setOpen(true))}>
-        {pending ? "Saving…" : archived ? "Restore project" : "Archive project"}
+      <Button
+        type="button"
+        size={compact ? "sm" : "default"}
+        variant={archived || compact ? "outline" : "destructive"}
+        disabled={pending}
+        onClick={() => (archived ? run() : setOpen(true))}
+      >
+        {pending ? "Saving…" : archived ? (compact ? "Restore" : "Restore project") : compact ? "Archive" : "Archive project"}
       </Button>
       <ConfirmDialog
         open={open}

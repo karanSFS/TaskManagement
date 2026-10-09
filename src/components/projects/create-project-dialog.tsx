@@ -10,10 +10,12 @@ export function CreateProjectButton({
   children = "New project",
   size,
   variant,
+  takenKeys,
 }: {
   children?: ReactNode
   size?: "sm" | "default"
   variant?: "default" | "outline"
+  takenKeys?: string[]
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -25,6 +27,7 @@ export function CreateProjectButton({
         mode="create"
         open={open}
         onOpenChange={setOpen}
+        takenKeys={takenKeys}
         defaultValues={{ name: "", key: "", description: "", icon: "folder-kanban" }}
       />
     </>
