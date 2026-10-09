@@ -14,7 +14,7 @@ export type ProjectMember = {
   userId: string
   name: string
   role: ProjectRole
-}
+} 
 
 export type ProjectSummary = {
   id: string
