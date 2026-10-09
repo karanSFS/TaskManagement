@@ -1,10 +1,12 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
+import { FormDialog } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -12,14 +14,35 @@ import { Textarea } from "@/components/ui/textarea"
 import { createSprint } from "@/lib/actions/sprints"
 import { createSprintSchema, type CreateSprintValues } from "@/lib/validations/sprint"
 
-export function CreateSprintForm({ projectId }: { projectId: string }) {
+export function PlanSprintButton({ projectId }: { projectId: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button type="button" onClick={() => setOpen(true)}>
+        Plan sprint
+      </Button>
+      <CreateSprintForm projectId={projectId} open={open} onOpenChange={setOpen} />
+    </>
+  )
+}
+
+export function CreateSprintForm({
+  projectId,
+  open,
+  onOpenChange,
+}: {
+  projectId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const form = useForm<CreateSprintValues>({
     resolver: zodResolver(createSprintSchema),
     defaultValues: { projectId, name: "", goal: "", startDate: "", endDate: "" },
   })
 
-  return (
+  const formBody = (
     <Form {...form}>
       <form
         className="grid max-w-xl gap-3"
@@ -33,6 +56,8 @@ export function CreateSprintForm({ projectId }: { projectId: string }) {
             }
             form.reset({ projectId, name: "", goal: "", startDate: "", endDate: "" })
             toast.success(result?.success ?? "Sprint planned.")
+            onOpenChange?.(false)
+            router.refresh()
           })
         })}
       >
@@ -90,10 +115,35 @@ export function CreateSprintForm({ projectId }: { projectId: string }) {
             )}
           />
         </div>
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Planning…" : "Plan sprint"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          {onOpenChange ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" disabled={pending}>
+            {pending ? "Planning…" : "Plan sprint"}
+          </Button>
+        </div>
       </form>
     </Form>
+  )
+
+  if (!onOpenChange) return formBody
+
+  return (
+    <FormDialog
+      open={open ?? false}
+      onOpenChange={(next) => {
+        if (!next) form.reset({ projectId, name: "", goal: "", startDate: "", endDate: "" })
+        onOpenChange(next)
+      }}
+      title="Plan sprint"
+      description="Name the sprint and set the dates. Only one sprint can be active."
+      dirty={form.formState.isDirty}
+      pending={pending}
+    >
+      {formBody}
+    </FormDialog>
   )
 }

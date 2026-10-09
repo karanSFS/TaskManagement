@@ -4,6 +4,8 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { FormDialog } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
 import { addIssueLink, removeIssueLink } from "@/lib/actions/issues"
 import { issueKey } from "@/lib/projects/format"
@@ -28,12 +30,21 @@ export function LinkSection({
   choices: { id: string; number: number; title: string }[]
 }) {
   const [pending, startTransition] = useTransition()
+  const [open, setOpen] = useState(false)
+  const [removeId, setRemoveId] = useState<string | null>(null)
   const [targetIssueId, setTargetIssueId] = useState(choices[0]?.id ?? "")
   const [linkType, setLinkType] = useState<(typeof linkTypes)[number]>("relates")
 
   return (
     <section className="grid gap-2">
-      <h2 className="text-sm font-medium">Links</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium">Links</h2>
+        {choices.length > 0 ? (
+          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+            Link issue
+          </Button>
+        ) : null}
+      </div>
       {links.length === 0 ? <p className="text-sm text-muted-foreground">No linked issues.</p> : null}
       {links.length > 0 ? (
         <ul className="grid gap-1">
@@ -46,18 +57,7 @@ export function LinkSection({
                 <Link href={`/issues/${link.issueId}`} className="min-w-0 flex-1 truncate hover:underline">
                   {issueKey(link.projectKey, link.number)} {link.title}
                 </Link>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => {
-                    startTransition(async () => {
-                      const result = await removeIssueLink(issueId, link.id)
-                      if (result?.error) toast.error(result.error)
-                    })
-                  }}
-                >
+                <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setRemoveId(link.id)}>
                   Remove
                 </Button>
               </li>
@@ -66,13 +66,19 @@ export function LinkSection({
         </ul>
       ) : null}
       {choices.length > 0 ? (
+        <FormDialog open={open} onOpenChange={setOpen} title="Link issue" description="Connect this issue to another one in the same project." pending={pending}>
         <form
-          className="grid gap-2"
+          className="grid gap-3"
           onSubmit={(event) => {
             event.preventDefault()
             startTransition(async () => {
               const result = await addIssueLink(issueId, { targetIssueId, linkType })
-              if (result?.error) toast.error(result.error)
+              if (result?.error) {
+                toast.error(result.error)
+                return
+              }
+              toast.success(result?.success ?? "Link added.")
+              setOpen(false)
             })
           }}
         >
@@ -90,13 +96,40 @@ export function LinkSection({
               </option>
             ))}
           </select>
-          <Button type="submit" size="sm" variant="outline" disabled={pending || !targetIssueId} className="w-fit">
-            Link
-          </Button>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={pending || !targetIssueId}>
+              {pending ? "Linking…" : "Link issue"}
+            </Button>
+          </div>
         </form>
+        </FormDialog>
       ) : (
         <p className="text-xs text-muted-foreground">Create another issue in this project to link it.</p>
       )}
+      <ConfirmDialog
+        open={removeId !== null}
+        onOpenChange={(next) => { if (!next) setRemoveId(null) }}
+        title="Remove this link?"
+        description="The issues stay. Only the connection between them is removed."
+        confirmLabel="Remove link"
+        pending={pending}
+        destructive
+        onConfirm={() => {
+          if (!removeId) return
+          startTransition(async () => {
+            const result = await removeIssueLink(issueId, removeId)
+            if (result?.error) {
+              toast.error(result.error)
+              return
+            }
+            toast.success(result?.success ?? "Link removed.")
+            setRemoveId(null)
+          })
+        }}
+      />
     </section>
   )
 }

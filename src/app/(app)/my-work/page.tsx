@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { AlarmClock, CalendarClock, CircleDot, ListTodo } from "lucide-react"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
+import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
@@ -162,9 +164,9 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
                   <tr key={issue.id} className="hover:bg-muted/40">
                     <td className="px-3 py-2 font-medium text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</td>
                     <td className="max-w-64 px-3 py-2">
-                      <Link href={`/issues/${issue.id}`} className="block truncate font-medium hover:underline">
+                      <IssueOpenButton issueId={issue.id} className="block w-full truncate text-left font-medium hover:underline">
                         {issue.title}
-                      </Link>
+                      </IssueOpenButton>
                     </td>
                     <td className="max-w-40 truncate px-3 py-2 text-muted-foreground">{issue.projectName}</td>
                     <td className="px-3 py-2">{issue.status}</td>
@@ -217,9 +219,7 @@ function EmptyWork({ view, filtered }: { view: MyWorkView; filtered: boolean }) 
         </div>
       </div>
       <div className="flex shrink-0 gap-2">
-        <Button asChild size="sm">
-          <Link href="/issues/new">Create issue</Link>
-        </Button>
+        <CreateIssueButton size="sm">Create issue</CreateIssueButton>
         <Button asChild size="sm" variant="outline">
           <Link href="/projects">Browse projects</Link>
         </Button>

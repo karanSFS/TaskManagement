@@ -1,7 +1,7 @@
-import Link from "next/link"
 import { Suspense } from "react"
 import { Kanban } from "lucide-react"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueBoard } from "@/components/issues/issue-board"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -74,9 +74,9 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
           Apply
         </Button>
         {board.archived ? null : (
-          <Button asChild size="sm" className="ml-auto">
-            <Link href={`/issues/new?projectId=${board.projectId}`}>New issue</Link>
-          </Button>
+          <CreateIssueButton projectId={board.projectId} size="sm" className="ml-auto">
+            New issue
+          </CreateIssueButton>
         )}
       </form>
       {board.archived ? (

@@ -5,7 +5,7 @@ import { Suspense } from "react"
 import { AttachmentSection } from "@/components/issues/attachment-section"
 import { CommentSection } from "@/components/issues/comment-section"
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
-import { IssueEditor } from "@/components/issues/issue-editor"
+import { EditIssueButton } from "@/components/issues/issue-editor"
 import { LabelEditor } from "@/components/issues/label-editor"
 import { LinkSection } from "@/components/issues/link-section"
 import { SubtaskSection } from "@/components/issues/subtask-section"
@@ -48,16 +48,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
           Reported by {issue.reporterName} · {formatProjectDate(issue.createdAt)}
         </span>
         {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
-        {issue.canDelete ? (
-          <div className="ml-auto">
-            <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} />
-          </div>
-        ) : null}
-      </div>
-      <h1 className="text-lg font-semibold tracking-tight">{issue.title}</h1>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="grid gap-6">
-          <IssueEditor
+        <div className="ml-auto flex items-center gap-2">
+          <EditIssueButton
             issueId={issue.id}
             types={catalog.types}
             statuses={catalog.statuses}
@@ -73,6 +65,13 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
               dueDate: issue.dueDate,
             }}
           />
+          {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} /> : null}
+        </div>
+      </div>
+      <h1 className="text-lg font-semibold tracking-tight">{issue.title}</h1>
+      <p className="max-w-3xl whitespace-pre-wrap text-sm text-muted-foreground">{issue.description || "No description yet."}</p>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-6">
           <CommentSection
             issueId={issue.id}
             currentUserId={user.id}

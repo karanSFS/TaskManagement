@@ -1,7 +1,6 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 
 import { actionError } from "@/lib/actions/result"
 import { type ActionState } from "@/lib/auth/paths"
@@ -56,12 +55,10 @@ export async function createProject(values: unknown): Promise<ActionState> {
 
   try {
     const projectId = await createProjectRecord(user.id, parsed.data)
-    if (!projectId) {
-      redirect("/projects")
-    }
+    if (!projectId) return { error: "The project was created, but it could not be opened." }
 
     projectPaths(projectId)
-    redirect(`/projects/${projectId}`)
+    return { success: "Project created.", href: `/projects/${projectId}` }
   } catch (error) {
     return failure(error, "createProject", user.id)
   }
@@ -156,7 +153,7 @@ export async function removeProjectMember(projectId: string, membershipId: strin
     const removedUserId = await removeProjectMemberRecord(projectId, membershipId)
     projectPaths(projectId)
     if (removedUserId === user.id) {
-      redirect("/projects")
+      return { success: "You left the project.", href: "/projects" }
     }
 
     return { success: "Member removed." }

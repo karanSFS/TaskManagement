@@ -16,6 +16,8 @@ import {
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
 import Link from "next/link"
+
+import { useOpenIssue } from "@/components/issues/issue-drawer"
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
@@ -130,14 +132,32 @@ function CardView({
       {...dragAttributes}
       {...dragListeners}
     >
-      <p className="text-xs font-medium text-muted-foreground">{issueKey(projectKey, card.number)}</p>
-      <Link href={`/issues/${card.id}`} className="mt-1 block text-sm hover:underline">
-        {card.title}
+      <Link
+        href={`/issues/${card.id}`}
+        className="text-xs font-medium text-muted-foreground hover:underline"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {issueKey(projectKey, card.number)}
       </Link>
+      <BoardTitle issueId={card.id} title={card.title} />
       <p className="mt-1 truncate text-xs text-muted-foreground">
         {card.priority} · {card.assigneeName ?? "Unassigned"}
       </p>
     </article>
+  )
+}
+
+function BoardTitle({ issueId, title }: { issueId: string; title: string }) {
+  const openIssue = useOpenIssue()
+  return (
+    <button
+      type="button"
+      className="mt-1 block w-full truncate text-left text-sm hover:underline"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={() => openIssue(issueId)}
+    >
+      {title}
+    </button>
   )
 }
 

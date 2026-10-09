@@ -1,10 +1,12 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 
+import { FormSheet } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -24,14 +26,20 @@ export function CreateIssueForm({
   statuses,
   priorities,
   defaultProjectId,
+  open,
+  onOpenChange,
 }: {
   projects: ProjectOption[]
   types: Option[]
   statuses: Option[]
   priorities: Option[]
   defaultProjectId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const framed = onOpenChange !== undefined
   const form = useForm<CreateIssueValues>({
     resolver: zodResolver(createIssueSchema),
     defaultValues: {
@@ -48,15 +56,26 @@ export function CreateIssueForm({
   const projectId = useWatch({ control: form.control, name: "projectId" })
   const members = projects.find((project) => project.id === projectId)?.members ?? []
 
-  return (
+  const formBody = (
     <Form {...form}>
       <form
-        className="grid max-w-xl gap-4"
+        className="grid gap-4"
         noValidate
         onSubmit={form.handleSubmit((values) => {
           startTransition(async () => {
             const result = await createIssue(values)
-            if (result?.error) toast.error(result.error)
+            if (result?.error) {
+              toast.error(result.error)
+              return
+            }
+            toast.success(result?.success ?? "Issue created.")
+            form.reset()
+            if (onOpenChange) {
+              onOpenChange(false)
+              router.refresh()
+              return
+            }
+            if (result?.href) router.push(result.href)
           })
         })}
       >
@@ -152,11 +171,36 @@ export function CreateIssueForm({
             )}
           />
         </div>
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Creating issue…" : "Create issue"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          {framed ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange?.(false)}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" disabled={pending}>
+            {pending ? "Creating issue…" : "Create issue"}
+          </Button>
+        </div>
       </form>
     </Form>
+  )
+
+  if (!framed) return formBody
+
+  return (
+    <FormSheet
+      open={open ?? false}
+      onOpenChange={(next) => {
+        if (!next) form.reset()
+        onOpenChange?.(next)
+      }}
+      title="New issue"
+      description="The project key and the next number are assigned when you save."
+      dirty={form.formState.isDirty}
+      pending={pending}
+    >
+      {formBody}
+    </FormSheet>
   )
 }
 

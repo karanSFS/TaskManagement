@@ -2,12 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
+import { FormDialog } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { createSubtask } from "@/lib/actions/issues"
 import { issueKey } from "@/lib/projects/format"
@@ -30,6 +31,7 @@ export function SubtaskSection({
   archived: boolean
 }) {
   const [pending, startTransition] = useTransition()
+  const [open, setOpen] = useState(false)
   const form = useForm<SubtaskValues>({
     resolver: zodResolver(subtaskSchema),
     defaultValues: { title: "" },
@@ -37,7 +39,14 @@ export function SubtaskSection({
 
   return (
     <section className="grid gap-2">
-      <h2 className="text-sm font-medium">Subtasks</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium">Subtasks</h2>
+        {archived ? null : (
+          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+            Add subtask
+          </Button>
+        )}
+      </div>
       {parent ? (
         <p className="text-xs text-muted-foreground">
           Subtask of{" "}
@@ -61,37 +70,57 @@ export function SubtaskSection({
         </ul>
       ) : null}
       {archived ? null : (
-        <Form {...form}>
-          <form
-            className="flex gap-2"
-            onSubmit={form.handleSubmit((values) => {
-              startTransition(async () => {
-                const result = await createSubtask(issueId, values)
-                if (result?.error) {
-                  toast.error(result.error)
-                  return
-                }
-                form.reset({ title: "" })
-              })
-            })}
-          >
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormControl>
-                    <Input placeholder="Add a subtask" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" size="sm" variant="outline" disabled={pending}>
-              Add
-            </Button>
-          </form>
-        </Form>
+        <FormDialog
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) form.reset({ title: "" })
+            setOpen(next)
+          }}
+          title="Add subtask"
+          description="The subtask is filed in this project and linked to the current issue."
+          dirty={form.formState.isDirty}
+          pending={pending}
+        >
+          <Form {...form}>
+            <form
+              className="grid gap-3"
+              onSubmit={form.handleSubmit((values) => {
+                startTransition(async () => {
+                  const result = await createSubtask(issueId, values)
+                  if (result?.error) {
+                    toast.error(result.error)
+                    return
+                  }
+                  form.reset({ title: "" })
+                  setOpen(false)
+                  toast.success(result?.success ?? "Subtask added.")
+                })
+              })}
+            >
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="What this subtask covers" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={pending}>
+                  {pending ? "Adding…" : "Add subtask"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </FormDialog>
       )}
     </section>
   )

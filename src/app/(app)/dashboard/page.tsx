@@ -2,7 +2,10 @@ import Link from "next/link"
 import { Suspense, type ReactNode } from "react"
 import { AlarmClock, CircleDot, FolderKanban, ListTodo, Plus } from "lucide-react"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
+import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
+import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { DashboardSkeleton } from "@/components/shared/page-skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -47,12 +50,10 @@ async function HomeContent() {
         title={`Hello, ${displayName(user)}`}
         description="Open work across the projects you belong to."
         actions={
-          <Button asChild>
-            <Link href="/issues/new">
-              <Plus />
-              New issue
-            </Link>
-          </Button>
+          <CreateIssueButton>
+            <Plus />
+            New issue
+          </CreateIssueButton>
         }
       />
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -91,11 +92,11 @@ async function HomeContent() {
             <ul className="divide-y">
               {work.assigned.items.slice(0, 6).map((issue) => (
                 <li key={issue.id}>
-                  <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50">
-                    <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</span>
-                    <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
+                  <div className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50">
+                    <Link href={`/issues/${issue.id}`} className="w-20 shrink-0 font-mono text-xs text-muted-foreground hover:underline">{issueKey(issue.projectKey, issue.number)}</Link>
+                    <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm">{issue.title}</IssueOpenButton>
                     <span className="hidden text-xs text-muted-foreground sm:inline">{issue.status}</span>
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -106,8 +107,7 @@ async function HomeContent() {
             <EmptyPanel
               title="No deadlines this week"
               description="Issues due in the next 7 days, including overdue, show up here."
-              href="/issues/new"
-              action="New issue"
+              actionSlot={<CreateIssueButton size="sm" variant="outline">New issue</CreateIssueButton>}
             />
           ) : (
             <ul className="divide-y">
@@ -115,13 +115,13 @@ async function HomeContent() {
                 const late = issue.dueDate !== null && issue.dueDate < today
                 return (
                   <li key={issue.id}>
-                    <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50">
-                      <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
+                    <div className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50">
+                      <Link href={`/issues/${issue.id}`} className="w-20 shrink-0 font-mono text-xs text-muted-foreground hover:underline">{issueKey(issue.projectKey, issue.number)}</Link>
+                      <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm">{issue.title}</IssueOpenButton>
                       <span className={late ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
                         {late ? "Overdue" : issue.dueDate ? formatDueDate(issue.dueDate) : ""}
                       </span>
-                    </Link>
+                    </div>
                   </li>
                 )
               })}
@@ -133,8 +133,7 @@ async function HomeContent() {
             <EmptyPanel
               title="No projects yet"
               description="Create a workspace before filing issues."
-              href="/projects/new"
-              action="New project"
+              actionSlot={<CreateProjectButton size="sm" variant="outline">New project</CreateProjectButton>}
             />
           ) : (
             <ul className="divide-y">
@@ -149,19 +148,18 @@ async function HomeContent() {
             <EmptyPanel
               title="No issue activity yet"
               description="Status changes, assignments, and new issues will show up here."
-              href="/issues/new"
-              action="New issue"
+              actionSlot={<CreateIssueButton size="sm" variant="outline">New issue</CreateIssueButton>}
             />
           ) : (
             <ul className="divide-y">
               {activity.slice(0, 6).map((entry) => (
                 <li key={entry.id}>
-                  <Link href={`/issues/${entry.issueId}`} className="grid gap-0.5 px-3 py-2 hover:bg-muted/50">
+                  <IssueOpenButton issueId={entry.issueId} className="grid w-full gap-0.5 px-3 py-2 text-left hover:bg-muted/50">
                     <span className="truncate text-sm">{entry.summary}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {entry.actorName} · {entry.issueKey} {entry.issueTitle} · {formatProjectDate(entry.createdAt)}
                     </span>
-                  </Link>
+                  </IssueOpenButton>
                 </li>
               ))}
             </ul>
@@ -239,14 +237,28 @@ function Panel({
   )
 }
 
-function EmptyPanel({ title, description, href, action }: { title: string; description: string; href: string; action: string }) {
+function EmptyPanel({
+  title,
+  description,
+  href,
+  action,
+  actionSlot,
+}: {
+  title: string
+  description: string
+  href?: string
+  action?: string
+  actionSlot?: ReactNode
+}) {
   return (
     <div className="grid gap-2 px-3 py-4">
       <p className="text-sm font-medium">{title}</p>
       <p className="text-sm text-muted-foreground">{description}</p>
-      <Button asChild size="sm" variant="outline" className="w-fit">
-        <Link href={href}>{action}</Link>
-      </Button>
+      {actionSlot ?? (
+        <Button asChild size="sm" variant="outline" className="w-fit">
+          <Link href={href ?? "/"}>{action}</Link>
+        </Button>
+      )}
     </div>
   )
 }

@@ -3,10 +3,10 @@ import { FolderKanban } from "lucide-react"
 import { Suspense } from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { roleLabel } from "@/lib/projects/format"
@@ -20,11 +20,7 @@ export default function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="Workspaces you belong to. Each project has its own key and issue numbers."
-        actions={
-          <Button asChild>
-            <Link href="/projects/new">New project</Link>
-          </Button>
-        }
+        actions={<CreateProjectButton />}
       />
       <Suspense fallback={<Skeleton className="h-40 w-full" />}>
         <ProjectLists />
@@ -49,6 +45,7 @@ async function ProjectLists() {
         icon={FolderKanban}
         title="No projects yet"
         description="Create a project to give the work a name, a key, and a place for members."
+        action={<CreateProjectButton size="sm">Create project</CreateProjectButton>}
       />
     )
   }

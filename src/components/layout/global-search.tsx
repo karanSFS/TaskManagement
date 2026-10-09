@@ -14,6 +14,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command"
 import { searchIssues } from "@/lib/actions/issues"
+import { useOpenIssue } from "@/components/issues/issue-drawer"
 import { mainNav, utilityNav } from "@/lib/config/nav"
 
 type GlobalSearchProps = {
@@ -25,6 +26,7 @@ type IssueHit = { id: string; key: string; title: string; projectName: string }
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const router = useRouter()
+  const openIssue = useOpenIssue()
   const [query, setQuery] = useState("")
   const [issues, setIssues] = useState<IssueHit[]>([])
   const pages = [...mainNav, ...utilityNav]
@@ -62,7 +64,15 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           {issues.length > 0 ? (
             <CommandGroup heading="Issues">
               {issues.map((issue) => (
-                <CommandItem key={issue.id} value={issue.id} onSelect={() => go(`/issues/${issue.id}`)}>
+                <CommandItem
+                  key={issue.id}
+                  value={issue.id}
+                  onSelect={() => {
+                    onOpenChange(false)
+                    setQuery("")
+                    openIssue(issue.id)
+                  }}
+                >
                   <span className="text-muted-foreground">{issue.key}</span>
                   <span className="truncate">{issue.title}</span>
                 </CommandItem>

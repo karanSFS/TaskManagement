@@ -1,10 +1,10 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Monitor, Moon, Plus, Search, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
+import { CreateIssueDialog } from "@/components/issues/create-issue-dialog"
 import { GlobalSearch } from "@/components/layout/global-search"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { UserMenu } from "@/components/layout/user-menu"
@@ -27,10 +27,10 @@ type AppChromeProps = {
 }
 
 export function AppChrome({ user, notifications }: AppChromeProps) {
-  const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const openSearch = useCallback(() => setSearchOpen(true), [])
-  const openCreate = useCallback(() => router.push("/issues/new"), [router])
+  const openCreate = useCallback(() => setCreateOpen(true), [])
 
   useKeyboardShortcut("/", openSearch)
   useKeyboardShortcut("c", openCreate)
@@ -58,6 +58,7 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
         <UserMenu user={user} />
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      <CreateIssueDialog open={createOpen} onOpenChange={setCreateOpen} />
     </>
   )
 }

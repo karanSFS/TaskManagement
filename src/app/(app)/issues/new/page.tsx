@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 
 import { CreateIssueForm } from "@/components/issues/create-issue-form"
+import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,9 +40,7 @@ async function NewIssueContent({ searchParams }: { searchParams: Promise<{ proje
           }
         />
         <div className="flex gap-2">
-          <Button asChild className="w-fit">
-            <Link href="/projects/new">New project</Link>
-          </Button>
+          <CreateProjectButton>New project</CreateProjectButton>
           {archivedCount > 0 ? (
             <Button asChild variant="outline" className="w-fit">
               <Link href="/projects">View projects</Link>

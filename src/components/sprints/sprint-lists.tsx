@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
+import { IssueOpenButton } from "@/components/issues/issue-drawer"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { assignIssueToSprint, completeSprint, startSprint } from "@/lib/actions/sprints"
 import { issueKey } from "@/lib/projects/format"
@@ -51,13 +53,7 @@ function BacklogRow({
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-      <Link href={`/issues/${issue.id}`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
-        <span className="w-24 shrink-0 text-sm font-medium text-muted-foreground">
-          {issueKey(projectKey, issue.number)}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
-        <span className="hidden text-xs text-muted-foreground sm:inline">{issue.status}</span>
-      </Link>
+      <IssueLine issueId={issue.id} projectKey={projectKey} number={issue.number} title={issue.title} status={issue.status} />
       {sprints.length > 0 ? (
         <select
           className={fieldClass}
@@ -150,22 +146,7 @@ function SprintCard({
           </Button>
         ) : null}
         {sprint.status === "active" ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() => {
-              if (!window.confirm("Complete this sprint? Issues that are not done return to the backlog.")) return
-              startTransition(async () => {
-                const result = await completeSprint(projectId, sprint.id)
-                if (result?.error) toast.error(result.error)
-                else toast.success(result?.success ?? "Sprint completed.")
-              })
-            }}
-          >
-            {pending ? "Completing…" : "Complete sprint"}
-          </Button>
+          <CompleteSprintButton projectId={projectId} sprintId={sprint.id} />
         ) : null}
       </div>
       {sprint.goal ? <p className="text-sm text-muted-foreground">{sprint.goal}</p> : null}
@@ -180,13 +161,7 @@ function SprintCard({
         <ul className="divide-y rounded-lg border">
           {sprint.issues.map((issue) => (
             <li key={issue.id} className="flex items-center gap-3 px-3 py-2">
-              <Link href={`/issues/${issue.id}`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
-                <span className="w-24 shrink-0 text-sm font-medium text-muted-foreground">
-                  {issueKey(projectKey, issue.number)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
-                <span className="text-xs text-muted-foreground">{issue.status}</span>
-              </Link>
+              <IssueLine issueId={issue.id} projectKey={projectKey} number={issue.number} title={issue.title} status={issue.status} />
               {sprint.status !== "completed" ? (
                 <Button
                   type="button"
@@ -208,5 +183,62 @@ function SprintCard({
         </ul>
       ) : null}
     </section>
+  )
+}
+
+function IssueLine({
+  issueId,
+  projectKey,
+  number,
+  title,
+  status,
+}: {
+  issueId: string
+  projectKey: string
+  number: number
+  title: string
+  status: string
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <Link href={`/issues/${issueId}`} className="w-24 shrink-0 text-sm font-medium text-muted-foreground hover:underline">
+        {issueKey(projectKey, number)}
+      </Link>
+      <IssueOpenButton issueId={issueId} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
+        {title}
+      </IssueOpenButton>
+      <span className="hidden text-xs text-muted-foreground sm:inline">{status}</span>
+    </div>
+  )
+}
+
+function CompleteSprintButton({ projectId, sprintId }: { projectId: string; sprintId: string }) {
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+  return (
+    <>
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setOpen(true)}>
+        {pending ? "Completing…" : "Complete sprint"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Complete this sprint?"
+        description="Issues that are not done return to the backlog."
+        confirmLabel="Complete sprint"
+        pending={pending}
+        onConfirm={() => {
+          startTransition(async () => {
+            const result = await completeSprint(projectId, sprintId)
+            if (result?.error) {
+              toast.error(result.error)
+              return
+            }
+            toast.success(result?.success ?? "Sprint completed.")
+            setOpen(false)
+          })
+        }}
+      />
+    </>
   )
 }

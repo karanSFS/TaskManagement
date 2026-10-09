@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { Suspense, type ReactNode } from "react"
 
+import { IssueDrawerProvider } from "@/components/issues/issue-drawer"
 import { AppChrome } from "@/components/layout/app-chrome"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,15 +32,17 @@ async function AuthenticatedShell({ children }: { children: ReactNode }) {
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar />
       <SidebarInset className="min-h-svh">
-        <AppChrome
-          user={{ id: user.id, email: user.email ?? "", fullName: displayName(user) }}
-          notifications={notifications}
-        />
-        <div className="flex-1 px-3 py-4 md:px-5">
-          <main id="content" tabIndex={-1} className="min-w-0 outline-none">
-            {children}
-          </main>
-        </div>
+        <IssueDrawerProvider>
+          <AppChrome
+            user={{ id: user.id, email: user.email ?? "", fullName: displayName(user) }}
+            notifications={notifications}
+          />
+          <div className="flex-1 px-3 py-4 md:px-5">
+            <main id="content" tabIndex={-1} className="min-w-0 outline-none">
+              {children}
+            </main>
+          </div>
+        </IssueDrawerProvider>
       </SidebarInset>
     </SidebarProvider>
   )

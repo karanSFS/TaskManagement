@@ -1,10 +1,13 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { FormDialog } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -57,6 +60,7 @@ export function MemberManager({
 }
 
 function AddMemberForm({ projectId, roles }: { projectId: string; roles: ProjectRole[] }) {
+  const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const form = useForm<AddMemberValues>({
     resolver: zodResolver(addMemberSchema),
@@ -71,13 +75,29 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
         return
       }
       form.reset({ email: "", role: "member" })
+      setOpen(false)
       toast.success(result?.success ?? "Member added.")
     })
   }
 
   return (
+    <>
+    <Button type="button" className="w-fit" onClick={() => setOpen(true)}>
+      Add member
+    </Button>
+    <FormDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) form.reset({ email: "", role: "member" })
+        setOpen(next)
+      }}
+      title="Add member"
+      description="They must already have a TaskForge account. Access follows this project's permissions."
+      dirty={form.formState.isDirty}
+      pending={pending}
+    >
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-3">
         <FormField
           control={form.control}
           name="email"
@@ -110,11 +130,18 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={pending}>
-          {pending ? "Adding…" : "Add member"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Adding…" : "Add member"}
+          </Button>
+        </div>
       </form>
     </Form>
+    </FormDialog>
+    </>
   )
 }
 
@@ -131,7 +158,9 @@ function MemberItem({
   canManage: boolean
   isLastOwner: boolean
 }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const canRemove = !isLastOwner && (canManage || member.isYou)
 
   return (
@@ -169,32 +198,32 @@ function MemberItem({
         <p className="text-sm text-muted-foreground">{roleLabel(member.role)}</p>
       )}
       {canRemove ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={pending}
-          onClick={() => {
-            const question = member.isYou
-              ? "Leave this project? You will lose access to its issues."
-              : `Remove ${member.name}? Their issues in this project become unassigned.`
-            if (!window.confirm(question)) {
-              return
-            }
+        <>
+        <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setConfirmOpen(true)}>
+          {member.isYou ? "Leave" : "Remove"}
+        </Button>
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={member.isYou ? "Leave this project?" : `Remove ${member.name}?`}
+          description={member.isYou ? "You will lose access to its issues." : "Their issues in this project become unassigned."}
+          confirmLabel={member.isYou ? "Leave project" : "Remove member"}
+          pending={pending}
+          destructive
+          onConfirm={() => {
             startTransition(async () => {
               const result = await removeProjectMember(projectId, member.id)
               if (result?.error) {
                 toast.error(result.error)
                 return
               }
-              if (result?.success) {
-                toast.success(member.isYou ? "You left the project." : "Member removed.")
-              }
+              toast.success(result?.success ?? "Member removed.")
+              setConfirmOpen(false)
+              if (result?.href) router.push(result.href)
             })
           }}
-        >
-          {member.isYou ? "Leave" : "Remove"}
-        </Button>
+        />
+        </>
       ) : null}
     </li>
   )

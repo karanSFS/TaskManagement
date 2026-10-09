@@ -2,7 +2,11 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
+import { IssueOpenButton } from "@/components/issues/issue-drawer"
+import { EditProjectButton } from "@/components/projects/create-project-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { isProjectIcon } from "@/lib/projects/icons"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate, issueKey, roleLabel } from "@/lib/projects/format"
 import { getProject } from "@/lib/services/project.service"
@@ -29,10 +33,27 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
   }
 
   const totalIssues = project.openIssueCount + project.doneIssueCount
+  const canEdit = project.role === "owner" || project.role === "admin" || project.leadId === user.id
+  const leadId = project.leadId && project.members.some((member) => member.userId === project.leadId) ? project.leadId : project.members[0]?.userId
 
   return (
     <div className="grid gap-4">
-      <p className="max-w-2xl text-sm text-muted-foreground">{project.description || "No description yet."}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">{project.description || "No description yet."}</p>
+        {canEdit && leadId ? (
+          <EditProjectButton
+            projectId={project.id}
+            members={project.members.map((member) => ({ id: member.userId, name: member.name }))}
+            defaultValues={{
+              name: project.name,
+              key: project.key,
+              description: project.description,
+              icon: project.icon && isProjectIcon(project.icon) ? project.icon : "",
+              leadId,
+            }}
+          />
+        ) : null}
+      </div>
       <dl className="grid gap-3 sm:grid-cols-4">
         <Stat label="Your role" value={roleLabel(project.role)} />
         <Stat label="Lead" value={project.leadName} />
@@ -49,9 +70,9 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
               </Link>
             ) : null}
             {project.archivedAt ? null : (
-              <Link href={`/issues/new?projectId=${project.id}`} className="text-primary hover:underline">
+              <CreateIssueButton projectId={project.id} size="sm" variant="ghost">
                 New issue
-              </Link>
+              </CreateIssueButton>
             )}
           </div>
         </div>
@@ -68,11 +89,11 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
           <ul className="divide-y rounded-lg border bg-card">
             {project.issues.map((issue) => (
               <li key={issue.id}>
-                <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
-                  <span className="font-medium text-muted-foreground">{issueKey(project.key, issue.number)}</span>
-                  <span className="min-w-0 flex-1 truncate">{issue.title}</span>
+                <div className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
+                  <Link href={`/issues/${issue.id}`} className="font-medium text-muted-foreground hover:underline">{issueKey(project.key, issue.number)}</Link>
+                  <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left">{issue.title}</IssueOpenButton>
                   <span className="text-xs text-muted-foreground">{issue.status}</span>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>

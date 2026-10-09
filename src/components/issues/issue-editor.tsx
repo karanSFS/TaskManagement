@@ -1,9 +1,12 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+
+import { FormSheet } from "@/components/shared/form-dialog"
 
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -17,14 +20,7 @@ const fieldClass =
 
 type Option = { id: string; name: string }
 
-export function IssueEditor({
-  issueId,
-  types,
-  statuses,
-  priorities,
-  members,
-  defaultValues,
-}: {
+export function EditIssueButton(props: {
   issueId: string
   types: Option[]
   statuses: Option[]
@@ -32,6 +28,44 @@ export function IssueEditor({
   members: Option[]
   defaultValues: UpdateIssueValues
 }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Edit issue
+      </Button>
+      <FormSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Edit issue"
+        description="Update the title, description, and workflow fields."
+      >
+        <IssueEditor {...props} onSaved={() => setOpen(false)} onCancel={() => setOpen(false)} />
+      </FormSheet>
+    </>
+  )
+}
+
+export function IssueEditor({
+  issueId,
+  types,
+  statuses,
+  priorities,
+  members,
+  defaultValues,
+  onSaved,
+  onCancel,
+}: {
+  issueId: string
+  types: Option[]
+  statuses: Option[]
+  priorities: Option[]
+  members: Option[]
+  defaultValues: UpdateIssueValues
+  onSaved?: () => void
+  onCancel?: () => void
+}) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const form = useForm<UpdateIssueValues>({
     resolver: zodResolver(updateIssueSchema),
@@ -51,6 +85,8 @@ export function IssueEditor({
               return
             }
             toast.success(result?.success ?? "Issue saved.")
+            onSaved?.()
+            router.refresh()
           })
         })}
       >
@@ -118,9 +154,16 @@ export function IssueEditor({
             )}
           />
         </div>
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Saving issue…" : "Save issue"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" disabled={pending}>
+            {pending ? "Saving issue…" : "Save issue"}
+          </Button>
+        </div>
       </form>
     </Form>
   )

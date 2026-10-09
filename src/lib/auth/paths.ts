@@ -25,4 +25,5 @@ export function safeNextPath(value: string | null | undefined, fallback = "/dash
 export type ActionState = {
   error?: string
   success?: string
+  href?: string
 }

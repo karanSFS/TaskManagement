@@ -1,7 +1,6 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 
 import { actionError } from "@/lib/actions/result"
 import { type ActionState } from "@/lib/auth/paths"
@@ -10,6 +9,9 @@ import { AppError } from "@/lib/errors/app-error"
 import {
   addIssueComment,
   addIssueLabel,
+  getIssue,
+  getIssueCatalog,
+  listWritableProjects,
   createIssue as createIssueRecord,
   createSubtask as createSubtaskRecord,
   addIssueLink as addIssueLinkRecord,
@@ -48,9 +50,47 @@ export async function createIssue(values: unknown): Promise<ActionState> {
   try {
     const created = await createIssueRecord(user.id, parsed.data)
     refreshIssue(created.id, created.project_id)
-    redirect(`/issues/${created.id}`)
+    return { success: "Issue created.", href: `/issues/${created.id}` }
   } catch (error) {
     return failure(error, "createIssue", user.id, parsed.data.projectId)
+  }
+}
+
+export async function loadCreateIssueForm(projectId?: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to create an issue." }
+
+  try {
+    const [{ active, archivedCount }, catalog] = await Promise.all([listWritableProjects(user.id), getIssueCatalog()])
+    const requested = active.find((project) => project.id === projectId)
+    return {
+      projects: active,
+      archivedCount,
+      types: catalog.types,
+      statuses: catalog.statuses,
+      priorities: catalog.priorities,
+      defaultProjectId: requested?.id ?? active[0]?.id ?? "",
+    }
+  } catch (error) {
+    return failure(error, "loadCreateIssueForm", user.id)
+  }
+}
+
+export async function loadIssueDrawer(issueId: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to view this issue." }
+
+  try {
+    const [issue, catalog] = await Promise.all([getIssue(issueId, user.id), getIssueCatalog()])
+    if (!issue) return { error: "That issue could not be found." }
+    return {
+      issue,
+      types: catalog.types,
+      statuses: catalog.statuses,
+      priorities: catalog.priorities,
+    }
+  } catch (error) {
+    return failure(error, "loadIssueDrawer", user.id, issueId)
   }
 }
 
@@ -93,7 +133,7 @@ export async function deleteIssue(issueId: string): Promise<ActionState> {
   try {
     const projectId = await deleteIssueRecord(issueId)
     refreshIssue(issueId, projectId)
-    redirect(projectId ? `/projects/${projectId}` : "/issues")
+    return { success: "Issue deleted.", href: projectId ? `/projects/${projectId}` : "/issues" }
   } catch (error) {
     return failure(error, "deleteIssue", user.id, issueId)
   }

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
 import { ArchiveProjectButton } from "@/components/projects/archive-project-button"
-import { ProjectForm } from "@/components/projects/project-form"
+import { EditProjectButton } from "@/components/projects/create-project-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate } from "@/lib/projects/format"
@@ -41,8 +41,7 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
         <div>Created {formatProjectDate(project.createdAt)} by {project.createdByName}</div>
       </dl>
       {canEdit && leadId ? (
-        <ProjectForm
-          mode="edit"
+        <EditProjectButton
           projectId={project.id}
           members={project.members.map((member) => ({ id: member.userId, name: member.name }))}
           defaultValues={{

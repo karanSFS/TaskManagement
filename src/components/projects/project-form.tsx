@@ -1,9 +1,12 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { useForm, type UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
+
+import { FormDialog, FormSheet } from "@/components/shared/form-dialog"
 
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { Button } from "@/components/ui/button"
@@ -37,35 +40,55 @@ type MemberOption = {
   name: string
 }
 
-type ProjectFormProps =
-  | {
-      mode: "create"
-      defaultValues: CreateProjectValues
-    }
-  | {
-      mode: "edit"
-      projectId: string
-      members: MemberOption[]
-      defaultValues: UpdateProjectValues
-    }
+type FrameProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+type ProjectFormProps = FrameProps &
+  (
+    | {
+        mode: "create"
+        defaultValues: CreateProjectValues
+      }
+    | {
+        mode: "edit"
+        projectId: string
+        members: MemberOption[]
+        defaultValues: UpdateProjectValues
+      }
+  )
 
 export function ProjectForm(props: ProjectFormProps) {
   if (props.mode === "create") {
-    return <CreateProjectForm defaultValues={props.defaultValues} />
+    return <CreateProjectForm defaultValues={props.defaultValues} open={props.open} onOpenChange={props.onOpenChange} />
   }
 
-  return <EditProjectForm projectId={props.projectId} members={props.members} defaultValues={props.defaultValues} />
+  return (
+    <EditProjectForm
+      projectId={props.projectId}
+      members={props.members}
+      defaultValues={props.defaultValues}
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+    />
+  )
 }
 
-function CreateProjectForm({ defaultValues }: { defaultValues: CreateProjectValues }) {
+function CreateProjectForm({
+  defaultValues,
+  open,
+  onOpenChange,
+}: { defaultValues: CreateProjectValues } & FrameProps) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [keyTouched, setKeyTouched] = useState(false)
   const form = useForm<CreateProjectValues>({
     resolver: zodResolver(createProjectSchema),
     defaultValues,
   })
-
-  return (
+  const framed = onOpenChange !== undefined
+  const formBody = (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
@@ -73,18 +96,42 @@ function CreateProjectForm({ defaultValues }: { defaultValues: CreateProjectValu
             const result = await createProject(values)
             if (result?.error) {
               toast.error(result.error)
+              return
             }
+            toast.success(result?.success ?? "Project created.")
+            form.reset(defaultValues)
+            if (onOpenChange) {
+              onOpenChange(false)
+              router.refresh()
+              return
+            }
+            if (result?.href) router.push(result.href)
           })
         })}
-        className="grid max-w-xl gap-4"
+        className="grid gap-4"
         noValidate
       >
         <SharedFields form={form} keyTouched={keyTouched} onKeyTouch={() => setKeyTouched(true)} />
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Saving…" : "Create project"}
-        </Button>
+        <FormButtons pending={pending} label="Create project" pendingLabel="Creating…" framed={framed} onCancel={() => onOpenChange?.(false)} />
       </form>
     </Form>
+  )
+
+  if (!framed) return formBody
+  return (
+    <FormDialog
+      open={open ?? false}
+      onOpenChange={(next) => {
+        if (!next) form.reset(defaultValues)
+        onOpenChange?.(next)
+      }}
+      title="New project"
+      description="Name the workspace and choose a short key. You become the owner and the lead."
+      dirty={form.formState.isDirty}
+      pending={pending}
+    >
+      {formBody}
+    </FormDialog>
   )
 }
 
@@ -92,18 +139,21 @@ function EditProjectForm({
   projectId,
   members,
   defaultValues,
+  open,
+  onOpenChange,
 }: {
   projectId: string
   members: MemberOption[]
   defaultValues: UpdateProjectValues
-}) {
+} & FrameProps) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const form = useForm<UpdateProjectValues>({
     resolver: zodResolver(updateProjectSchema),
     defaultValues,
   })
-
-  return (
+  const framed = onOpenChange !== undefined
+  const formBody = (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
@@ -114,9 +164,13 @@ function EditProjectForm({
               return
             }
             toast.success(result?.success ?? "Project saved.")
+            if (onOpenChange) {
+              onOpenChange(false)
+              router.refresh()
+            }
           })
         })}
-        className="grid max-w-xl gap-4"
+        className="grid gap-4"
         noValidate
       >
         <SharedFields form={form} keyTouched onKeyTouch={() => undefined} />
@@ -140,11 +194,50 @@ function EditProjectForm({
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Saving…" : "Save project"}
-        </Button>
+        <FormButtons pending={pending} label="Save project" pendingLabel="Saving…" framed={framed} onCancel={() => onOpenChange?.(false)} />
       </form>
     </Form>
+  )
+
+  if (!framed) return formBody
+  return (
+    <FormSheet
+      open={open ?? false}
+      onOpenChange={onOpenChange ?? (() => undefined)}
+      title="Edit project"
+      description="Update the name, key, lead, and description."
+      dirty={form.formState.isDirty}
+      pending={pending}
+    >
+      {formBody}
+    </FormSheet>
+  )
+}
+
+function FormButtons({
+  pending,
+  label,
+  pendingLabel,
+  framed,
+  onCancel,
+}: {
+  pending: boolean
+  label: string
+  pendingLabel: string
+  framed: boolean
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex justify-end gap-2">
+      {framed ? (
+        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+          Cancel
+        </Button>
+      ) : null}
+      <Button type="submit" disabled={pending}>
+        {pending ? pendingLabel : label}
+      </Button>
+    </div>
   )
 }
 

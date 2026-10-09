@@ -1,10 +1,11 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
+import { FormDialog } from "@/components/shared/form-dialog"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,7 @@ export function LabelEditor({
   projectLabels: { id: string; name: string; color: string }[]
 }) {
   const [pending, startTransition] = useTransition()
+  const [open, setOpen] = useState(false)
   const attached = new Set(labels.map((label) => label.id))
   const form = useForm<LabelValues>({
     resolver: zodResolver(labelNameSchema),
@@ -39,7 +41,12 @@ export function LabelEditor({
 
   return (
     <section className="grid gap-2">
-      <h2 className="text-sm font-medium">Labels</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium">Labels</h2>
+        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+          New label
+        </Button>
+      </div>
       <div className="flex flex-wrap gap-1">
         {projectLabels.length === 0 ? <p className="text-sm text-muted-foreground">No labels yet.</p> : null}
         {projectLabels.map((label) => {
@@ -59,9 +66,20 @@ export function LabelEditor({
           )
         })}
       </div>
+      <FormDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) form.reset({ name: "" })
+          setOpen(next)
+        }}
+        title="New label"
+        description="Labels are shared across issues in this project."
+        dirty={form.formState.isDirty}
+        pending={pending}
+      >
       <Form {...form}>
         <form
-          className="flex gap-2"
+          className="grid gap-3"
           onSubmit={form.handleSubmit((values) => {
             startTransition(async () => {
               const result = await addLabel(issueId, values)
@@ -70,6 +88,8 @@ export function LabelEditor({
                 return
               }
               form.reset({ name: "" })
+              setOpen(false)
+              toast.success(result?.success ?? "Label added.")
             })
           })}
         >
@@ -85,11 +105,17 @@ export function LabelEditor({
               </FormItem>
             )}
           />
-          <Button type="submit" size="sm" variant="outline" disabled={pending}>
-            Add
-          </Button>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={pending}>
+              {pending ? "Adding…" : "Add label"}
+            </Button>
+          </div>
         </form>
       </Form>
+      </FormDialog>
     </section>
   )
 }

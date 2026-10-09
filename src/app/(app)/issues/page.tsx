@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { CircleDot } from "lucide-react"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
+import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
@@ -35,9 +37,7 @@ export default function IssuesPage({ searchParams }: { searchParams: Promise<Iss
         title="Issues"
         description="Search by title, key, or label. Filters run in the database."
         actions={
-          <Button asChild>
-            <Link href="/issues/new">New issue</Link>
-          </Button>
+          <CreateIssueButton>New issue</CreateIssueButton>
         }
       />
       <Suspense fallback={<ListSkeleton />}>
@@ -128,9 +128,7 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
           description={filtered ? "No issues match these filters." : "Create an issue to start tracking work."}
           action={
             filtered ? undefined : (
-              <Button asChild size="sm">
-                <Link href="/issues/new">New issue</Link>
-              </Button>
+              <CreateIssueButton size="sm">New issue</CreateIssueButton>
             )
           }
         />
@@ -138,17 +136,19 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
         <ul className="divide-y rounded-lg border bg-card">
           {result.items.map((issue) => (
             <li key={issue.id}>
-              <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50">
-                <span className="w-24 shrink-0 text-sm font-medium text-muted-foreground">
+              <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50">
+                <Link href={`/issues/${issue.id}`} className="w-24 shrink-0 text-sm font-medium text-muted-foreground hover:underline">
                   {issueKey(issue.projectKey, issue.number)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
+                </Link>
+                <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm">
+                  {issue.title}
+                </IssueOpenButton>
                 <span className="hidden text-xs text-muted-foreground lg:inline">{issue.priority}</span>
                 <span className="hidden text-xs text-muted-foreground sm:inline">{issue.status}</span>
                 <span className="hidden w-28 truncate text-right text-xs text-muted-foreground md:inline">
                   {issue.assigneeName ?? "Unassigned"}
                 </span>
-              </Link>
+              </div>
             </li>
           ))}
         </ul>

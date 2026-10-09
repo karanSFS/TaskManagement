@@ -4,7 +4,7 @@ import { CalendarRange } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
-import { CreateSprintForm } from "@/components/sprints/create-sprint-form"
+import { PlanSprintButton } from "@/components/sprints/create-sprint-form"
 import { SprintList } from "@/components/sprints/sprint-lists"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -63,7 +63,7 @@ async function SprintsContent({ searchParams }: { searchParams: Promise<{ projec
       {workspace.archived ? (
         <p className="text-sm text-muted-foreground">This project is archived. You can still close the active sprint.</p>
       ) : (
-        <CreateSprintForm key={workspace.projectId} projectId={workspace.projectId} />
+        <PlanSprintButton key={workspace.projectId} projectId={workspace.projectId} />
       )}
       {workspace.truncated ? <p className="text-xs text-muted-foreground">Showing the latest 200 issues.</p> : null}
       <SprintList projectId={workspace.projectId} projectKey={workspace.projectKey} sprints={workspace.sprints} />
