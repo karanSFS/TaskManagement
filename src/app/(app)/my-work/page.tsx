@@ -1,9 +1,8 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { AlarmClock, CalendarClock, CircleDot, ListTodo, Plus, type LucideIcon } from "lucide-react"
+import { AlarmClock, CalendarClock, CircleDot, ListTodo } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
-import { EmptyState } from "@/components/shared/empty-state"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -36,18 +35,7 @@ const views: { id: MyWorkView; label: string; hint: string }[] = [
 export default function MyWorkPage({ searchParams }: { searchParams: Promise<WorkSearch> }) {
   return (
     <div className="grid gap-4">
-      <PageHeader
-        title="My Work"
-        description="Open issues assigned to you, reported by you, due soon, or overdue."
-        actions={
-          <Button asChild>
-            <Link href="/issues/new">
-              <Plus />
-              Create issue
-            </Link>
-          </Button>
-        }
-      />
+      <PageHeader title="My Work" description="Open issues assigned to you, reported by you, due soon, or overdue." />
       <Suspense fallback={<MyWorkSkeleton />}>
         <MyWorkContent searchParams={searchParams} />
       </Suspense>
@@ -92,12 +80,13 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
 
   return (
     <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {views.map((item) => (
           <SummaryCard
             key={item.id}
             href={workHref({ ...filters, view: item.id, page: undefined })}
             active={view === item.id}
+            view={item.id}
             label={item.label}
             hint={item.hint}
             value={countFor(item.id, work.counts)}
@@ -142,26 +131,14 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
             <Link href={workHref({ view })}>Clear</Link>
           </Button>
         ) : null}
+        {work.total > 0 ? (
+          <p className="text-xs text-muted-foreground sm:ml-auto" role="status">
+            Showing {from}–{to} of {work.total}
+          </p>
+        ) : null}
       </form>
-      <p className="text-xs text-muted-foreground" role="status">
-        {work.total === 0 ? "No matching issues" : `Showing ${from}–${to} of ${work.total}`}
-      </p>
       {work.total === 0 ? (
-        <EmptyState
-          icon={viewIcon(view)}
-          title={emptyCopy(view, filtered).title}
-          description={emptyCopy(view, filtered).description}
-          action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button asChild size="sm">
-                <Link href="/issues/new">Create issue</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/projects">Browse projects</Link>
-              </Button>
-            </div>
-          }
-        />
+        <EmptyWork view={view} filtered={filtered} />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -230,6 +207,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
 function SummaryCard({
   href,
   active,
+  view,
   label,
   hint,
   value,
@@ -237,6 +215,7 @@ function SummaryCard({
 }: {
   href: string
   active: boolean
+  view: MyWorkView
   label: string
   hint: string
   value: number
@@ -246,44 +225,62 @@ function SummaryCard({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={active ? "rounded-lg border border-primary bg-card px-3 py-2.5" : "rounded-lg border bg-card px-3 py-2.5 hover:bg-muted/40"}
+      className={
+        active
+          ? "flex h-14 items-center gap-2.5 rounded-lg border border-primary bg-primary/5 px-3"
+          : "flex h-14 items-center gap-2.5 rounded-lg border bg-card px-3 hover:bg-muted/40"
+      }
     >
-      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-        <SummaryIcon view={label} />
-        {label}
+      <span className={active ? "flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary" : "flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"}>
+        <SummaryIcon view={view} />
       </span>
-      <span className={alert ? "mt-1 block font-mono text-xl font-semibold tabular-nums text-destructive" : "mt-1 block font-mono text-xl font-semibold tabular-nums"}>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-medium leading-4">{label}</span>
+        <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{hint}</span>
+      </span>
+      <span className={alert ? "shrink-0 font-mono text-base font-semibold leading-none text-destructive tabular-nums" : "shrink-0 font-mono text-base font-semibold leading-none tabular-nums"}>
         {value}
       </span>
-      <span className="text-xs text-muted-foreground">{hint}</span>
     </Link>
   )
 }
 
-function SummaryIcon({ view }: { view: string }) {
-  const className = "size-3.5"
-  switch (view) {
-    case "Assigned to me":
-      return <ListTodo className={className} aria-hidden />
-    case "Reported by me":
-      return <CircleDot className={className} aria-hidden />
-    case "Due soon":
-      return <CalendarClock className={className} aria-hidden />
-    default:
-      return <AlarmClock className={className} aria-hidden />
-  }
+function EmptyWork({ view, filtered }: { view: MyWorkView; filtered: boolean }) {
+  const copy = emptyCopy(view, filtered)
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <SummaryIcon view={view} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium leading-5">{copy.title}</p>
+          <p className="text-sm leading-5 text-muted-foreground">{copy.description}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button asChild size="sm">
+          <Link href="/issues/new">Create issue</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/projects">Browse projects</Link>
+        </Button>
+      </div>
+    </div>
+  )
 }
 
-function viewIcon(view: MyWorkView): LucideIcon {
+function SummaryIcon({ view }: { view: MyWorkView }) {
+  const className = "size-3.5"
   switch (view) {
     case "assigned":
-      return ListTodo
+      return <ListTodo className={className} aria-hidden />
     case "reported":
-      return CircleDot
+      return <CircleDot className={className} aria-hidden />
     case "due":
-      return CalendarClock
+      return <CalendarClock className={className} aria-hidden />
     case "overdue":
-      return AlarmClock
+      return <AlarmClock className={className} aria-hidden />
   }
 }
 

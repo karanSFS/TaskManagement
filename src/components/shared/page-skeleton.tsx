@@ -40,10 +40,10 @@ export function MyWorkSkeleton() {
     <div className="grid gap-3" role="status" aria-live="polite">
       <p className="sr-only">Loading your work</p>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
       </div>
       <Skeleton className="h-8 w-full" />
       <Skeleton className="h-64 w-full" />
