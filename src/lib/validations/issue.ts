@@ -33,6 +33,8 @@ export const changeStatusSchema = z.object({
 })
 
 export const issueSorts = ["updated", "created", "title", "priority", "key"] as const
+export const myWorkViews = ["assigned", "reported", "due", "overdue"] as const
+export const myWorkSorts = ["updated", "due", "priority", "title"] as const
 export const linkTypes = ["blocks", "relates", "duplicates"] as const
 
 export const subtaskSchema = z.object({

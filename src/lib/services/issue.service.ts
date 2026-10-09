@@ -7,7 +7,7 @@ import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
 import { createClient } from "@/lib/supabase/server"
-import type { CreateIssueValues, UpdateIssueValues } from "@/lib/validations/issue"
+import { myWorkSorts, myWorkViews, type CreateIssueValues, type UpdateIssueValues } from "@/lib/validations/issue"
 
 const pageSize = 20
 
@@ -44,6 +44,28 @@ export type MyWork = {
   assigned: MyWorkList
   reported: MyWorkList
   dueSoon: MyWorkList
+}
+
+export type MyWorkView = (typeof myWorkViews)[number]
+export type MyWorkSort = (typeof myWorkSorts)[number]
+
+export type MyWorkFilters = {
+  view?: MyWorkView
+  query?: string
+  statusId?: string
+  priorityId?: string
+  sort?: MyWorkSort
+  ascending?: boolean
+  page?: number
+}
+
+export type MyWorkPage = {
+  view: MyWorkView
+  counts: { assigned: number; reported: number; dueSoon: number; overdue: number }
+  items: MyWorkItem[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export type IssueList = {
@@ -299,17 +321,17 @@ function uuidOrNull(value: string | undefined) {
 const myWorkSelect =
   "id, issue_number, title, updated_at, due_date, project:projects!issues_project_id_fkey(key, name), issue_statuses!issues_status_id_fkey(name), priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name)"
 
+const myWorkPageSelect =
+  "id, issue_number, title, updated_at, due_date, project:projects!issues_project_id_fkey!inner(key, name), issue_statuses!issues_status_id_fkey(name), priorities!issues_priority_id_fkey!inner(name, rank), assignee:profiles!issues_assignee_id_fkey(display_name)"
+
 const myWorkLimit = 20
 
 export async function listMyWork(userId: string): Promise<MyWork> {
-  if (!/^[0-9a-f-]{36}$/i.test(userId)) {
-    throw new AuthenticationError("Sign in to see your work.")
-  }
+  assertUserId(userId)
   const catalog = await getIssueCatalog()
   const openStatusIds = catalog.statuses.filter((status) => status.category !== "done").map((status) => status.id)
   if (openStatusIds.length === 0) {
-    const empty = { items: [], total: 0 }
-    return { assigned: empty, reported: empty, dueSoon: empty }
+    throw new DatabaseError("Could not load your work.")
   }
 
   const horizon = isoDate(7)
@@ -338,6 +360,82 @@ export async function listMyWork(userId: string): Promise<MyWork> {
     assigned: toMyWorkList(assigned.data, assigned.count),
     reported: toMyWorkList(reported.data, reported.count),
     dueSoon: toMyWorkList(dueSoon.data, dueSoon.count),
+  }
+}
+
+export async function getMyWork(userId: string, filters: MyWorkFilters = {}): Promise<MyWorkPage> {
+  assertUserId(userId)
+  const catalog = await getIssueCatalog()
+  const openStatusIds = catalog.statuses.filter((status) => status.category !== "done").map((status) => status.id)
+  if (openStatusIds.length === 0) throw new DatabaseError("Could not load your work.")
+
+  const view = filters.view ?? "assigned"
+  const sort = filters.sort ?? "updated"
+  const ascending = filters.ascending ?? false
+  const statusId = catalog.statuses.some((status) => status.id === filters.statusId) ? filters.statusId : undefined
+  const priorityId = catalog.priorities.some((priority) => priority.id === filters.priorityId) ? filters.priorityId : undefined
+  const page = filters.page && filters.page > 0 ? Math.floor(filters.page) : 1
+  const from = (page - 1) * myWorkLimit
+  const today = isoDate(0)
+  const horizon = isoDate(7)
+  const needle = (filters.query ?? "").replace(/[\\%_]/g, "").trim()
+  const keyMatch = /^([A-Za-z][A-Za-z0-9]{1,9})-(\d+)$/.exec(needle)
+  const mine = `assignee_id.eq.${userId},reporter_id.eq.${userId}`
+  const supabase = await createClient()
+
+  const counted = () => supabase.from("issues").select("id", { count: "exact", head: true }).in("status_id", openStatusIds)
+  let list = supabase.from("issues").select(myWorkPageSelect, { count: "exact" })
+  list = statusId ? list.eq("status_id", statusId) : list.in("status_id", openStatusIds)
+  if (priorityId) list = list.eq("priority_id", priorityId)
+  if (keyMatch) {
+    list = list.eq("issue_number", Number(keyMatch[2])).eq("project.key", keyMatch[1].toUpperCase())
+  } else if (needle) {
+    list = list.ilike("title", `%${needle}%`)
+  }
+  if (view === "assigned") list = list.eq("assignee_id", userId)
+  else if (view === "reported") list = list.eq("reporter_id", userId)
+  else if (view === "due") list = list.or(mine).gte("due_date", today).lte("due_date", horizon)
+  else list = list.or(mine).lt("due_date", today)
+
+  if (sort === "title") list = list.order("title", { ascending })
+  else if (sort === "due") list = list.order("due_date", { ascending, nullsFirst: false })
+  else if (sort === "priority") list = list.order("rank", { referencedTable: "priorities", ascending, nullsFirst: false })
+  else list = list.order("updated_at", { ascending })
+  list = list.order("id", { ascending: true }).range(from, from + myWorkLimit - 1)
+
+  const [assigned, reported, dueSoon, overdue, rows] = await Promise.all([
+    counted().eq("assignee_id", userId),
+    counted().eq("reporter_id", userId),
+    counted().or(mine).gte("due_date", today).lte("due_date", horizon),
+    counted().or(mine).lt("due_date", today),
+    list,
+  ])
+
+  if (assigned.error || reported.error || dueSoon.error || overdue.error || rows.error) {
+    throw new DatabaseError("Could not load your work.")
+  }
+  if (assigned.count === null || reported.count === null || dueSoon.count === null || overdue.count === null || rows.count === null) {
+    throw new DatabaseError("Could not load your work.")
+  }
+
+  return {
+    view,
+    counts: {
+      assigned: assigned.count,
+      reported: reported.count,
+      dueSoon: dueSoon.count,
+      overdue: overdue.count,
+    },
+    items: toMyWorkList(rows.data, rows.count).items,
+    total: rows.count,
+    page,
+    pageSize: myWorkLimit,
+  }
+}
+
+function assertUserId(userId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+    throw new AuthenticationError("Sign in to see your work.")
   }
 }
 
