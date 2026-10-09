@@ -33,6 +33,11 @@ export type IssueListItem = {
   updatedAt: string
 }
 
+export type IssueTableItem = IssueListItem & {
+  typeName: string
+  reporterName: string
+}
+
 export type MyWorkItem = IssueListItem & { dueDate: string | null }
 
 export type MyWorkList = {
@@ -69,7 +74,7 @@ export type MyWorkPage = {
 }
 
 export type IssueList = {
-  items: IssueListItem[]
+  items: IssueTableItem[]
   page: number
   pageSize: number
   total: number
@@ -136,6 +141,7 @@ export type IssueDetail = {
   updatedAt: string
   projectArchived: boolean
   canDelete: boolean
+  canEdit: boolean
   labels: IssueLabel[]
   projectLabels: IssueLabel[]
   members: { id: string; name: string }[]
@@ -295,6 +301,23 @@ export async function listIssues(userId: string, page: number, filters: IssueFil
   if (error) throw new DatabaseError("Could not load issues.")
 
   const rows = data ?? []
+  const details = new Map<string, { typeName: string; reporterName: string }>()
+  if (rows.length > 0) {
+    const extra = await supabase
+      .from("issues")
+      .select("id, issue_types!issues_issue_type_id_fkey(name), reporter:profiles!issues_reporter_id_fkey(display_name)")
+      .in("id", rows.map((issue) => issue.id))
+
+    if (extra.error || extra.data === null) throw new DatabaseError("Could not load issues.")
+    for (const row of extra.data) {
+      details.set(row.id, {
+        typeName: one(row.issue_types as NamedEmbed)?.name ?? "Unknown",
+        reporterName: one(row.reporter as NameEmbed)?.display_name ?? "Unknown",
+      })
+    }
+    if (rows.some((issue) => !details.has(issue.id))) throw new DatabaseError("Could not load issues.")
+  }
+
   return {
     page: safePage,
     pageSize: limit,
@@ -307,6 +330,8 @@ export async function listIssues(userId: string, page: number, filters: IssueFil
       projectName: issue.project_name,
       status: issue.status_name,
       priority: issue.priority_name,
+      typeName: details.get(issue.id)?.typeName ?? "Unknown",
+      reporterName: details.get(issue.id)?.reporterName ?? "Unknown",
       assigneeName: issue.assignee_name,
       updatedAt: issue.updated_at,
     })),
@@ -565,6 +590,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   const names = new Map<string, string>()
   for (const status of catalog.statuses) names.set(status.id, status.name)
   for (const priority of catalog.priorities) names.set(priority.id, priority.name)
+  for (const type of catalog.types) names.set(type.id, type.name)
   const memberRows = (members.data ?? []).map((member) => {
     const profile = one(member.profile as NameEmbed)
     const name = profile?.display_name ?? "Member"
@@ -592,6 +618,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     updatedAt: issue.updated_at,
     projectArchived: Boolean(project?.archived_at),
     canDelete: issue.reporter_id === userId || myRole === "owner" || myRole === "admin",
+    canEdit: myRole === "owner" || myRole === "admin" || myRole === "member",
     labels: (labels.data ?? []).flatMap((row) => {
       const label = one(row.label as IssueLabel | IssueLabel[] | null)
       return label ? [label] : []
@@ -655,8 +682,10 @@ function historySummary(field: string, newValue: string | null, names: Map<strin
   const next = newValue ? (names.get(newValue) ?? "an unknown value") : "none"
   if (field === "created") return `Created “${newValue ?? "issue"}”`
   if (field === "title") return `Title changed to “${newValue ?? ""}”`
+  if (field === "description") return "Description updated"
   if (field === "status") return `Status set to ${next}`
   if (field === "priority") return `Priority set to ${next}`
+  if (field === "type") return `Type set to ${next}`
   if (field === "assignee") return newValue ? `Assigned to ${names.get(newValue) ?? "a former member"}` : "Assignee cleared"
   if (field === "due_date") return newValue ? `Due date set to ${formatDueDate(newValue)}` : "Due date cleared"
   if (field === "sprint") return newValue ? "Moved to a sprint" : "Removed from the sprint"
@@ -691,6 +720,7 @@ export async function listRecentActivity(userId: string): Promise<ActivityItem[]
   const names = new Map<string, string>()
   for (const status of catalog.statuses) names.set(status.id, status.name)
   for (const priority of catalog.priorities) names.set(priority.id, priority.name)
+  for (const type of catalog.types) names.set(type.id, type.name)
 
   const profileIds = [
     ...new Set(
@@ -857,7 +887,6 @@ export async function deleteIssue(issueId: string) {
 }
 
 export async function updateIssue(userId: string, issueId: string, input: UpdateIssueValues) {
-  void userId
   const supabase = await createClient()
   const { data: existing, error: readError } = await supabase
     .from("issues")
@@ -868,10 +897,11 @@ export async function updateIssue(userId: string, issueId: string, input: Update
   if (readError) throw new DatabaseError("Could not load this issue.")
   if (!existing) throw new NotFoundError("ISSUE_NOT_FOUND", "Issue could not be found.")
 
+  await assertProjectMember(existing.project_id, userId)
   const assigneeId = input.assigneeId || null
   await assertAssignee(existing.project_id, assigneeId)
 
-    const { data, error } = await supabase
+  const { data, error } = await supabase
     .from("issues")
     .update({
       title: input.title,
@@ -891,6 +921,19 @@ export async function updateIssue(userId: string, issueId: string, input: Update
   }
 
   return data[0]
+}
+
+async function assertProjectMember(projectId: string, userId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("project_members")
+    .select("user_id")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) throw new DatabaseError("Could not check project access.")
+  if (!data) throw new AuthorizationError("ISSUE_ACCESS_DENIED", "You don't have permission to change this issue.")
 }
 
 export async function addIssueComment(userId: string, issueId: string, body: string) {

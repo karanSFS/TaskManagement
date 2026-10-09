@@ -150,7 +150,7 @@ export async function removeProjectMember(projectId: string, membershipId: strin
   }
 
   try {
-    const removedUserId = await removeProjectMemberRecord(projectId, membershipId)
+    const removedUserId = await removeProjectMemberRecord(user.id, projectId, membershipId)
     projectPaths(projectId)
     if (removedUserId === user.id) {
       return { success: "You left the project.", href: "/projects" }

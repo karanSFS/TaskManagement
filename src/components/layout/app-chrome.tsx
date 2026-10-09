@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Monitor, Moon, Plus, Search, Sun } from "lucide-react"
+import { Loader2, Monitor, Moon, Plus, Search, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { CreateIssueDialog } from "@/components/issues/create-issue-dialog"
@@ -48,17 +48,22 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
           <span className="truncate">Search issues and pages</span>
           <Kbd className="ml-auto font-mono">/</Kbd>
         </Button>
-        <Button className="ml-auto" onClick={openCreate}>
-          <Plus />
-          <span className="hidden sm:inline">Create issue</span>
-          <Kbd className="hidden bg-primary-foreground/15 font-mono text-primary-foreground sm:inline-flex">C</Kbd>
-        </Button>
+        <CreateIssueDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          trigger={(busy) => (
+            <Button className="ml-auto" disabled={busy} aria-busy={busy || undefined} onClick={openCreate}>
+              {busy ? <Loader2 className="animate-spin" /> : <Plus />}
+              <span className="hidden sm:inline">Create issue</span>
+              <Kbd className="hidden bg-primary-foreground/15 font-mono text-primary-foreground sm:inline-flex">C</Kbd>
+            </Button>
+          )}
+        />
         <NotificationBell userId={user.id} unread={notifications.unread} items={notifications.items} />
         <ThemeToggle />
         <UserMenu user={user} />
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-      <CreateIssueDialog open={createOpen} onOpenChange={setCreateOpen} />
     </>
   )
 }

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
 import { FormDialog } from "@/components/shared/form-dialog"
+import { LinkPending, RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -42,15 +43,16 @@ export function SubtaskSection({
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Subtasks</h2>
         {archived ? null : (
-          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
             Add subtask
-          </Button>
+          </RevealButton>
         )}
       </div>
       {parent ? (
         <p className="text-xs text-muted-foreground">
           Subtask of{" "}
-          <Link href={`/issues/${parent.id}`} className="text-foreground hover:underline">
+          <Link href={`/issues/${parent.id}`} className="inline-flex items-center gap-1 text-foreground hover:underline">
+            <LinkPending />
             {issueKey(projectKey, parent.number)} {parent.title}
           </Link>
         </p>
@@ -61,6 +63,7 @@ export function SubtaskSection({
           {subtasks.map((subtask) => (
             <li key={subtask.id}>
               <Link href={`/issues/${subtask.id}`} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted/50">
+                <LinkPending />
                 <span className="text-muted-foreground">{issueKey(projectKey, subtask.number)}</span>
                 <span className="min-w-0 flex-1 truncate">{subtask.title}</span>
                 <span className="text-xs text-muted-foreground">{subtask.status}</span>

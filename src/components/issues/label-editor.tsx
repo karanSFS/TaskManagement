@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
 import { FormDialog } from "@/components/shared/form-dialog"
+import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -43,9 +44,9 @@ export function LabelEditor({
     <section className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Labels</h2>
-        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
           New label
-        </Button>
+        </RevealButton>
       </div>
       <div className="flex flex-wrap gap-1">
         {projectLabels.length === 0 ? <p className="text-sm text-muted-foreground">No labels yet.</p> : null}

@@ -12,7 +12,7 @@ import { SubtaskSection } from "@/components/issues/subtask-section"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
-import { formatProjectDate, issueKey } from "@/lib/projects/format"
+import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
 import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
 import { listIssueAttachments } from "@/lib/services/attachment.service"
 
@@ -37,41 +37,61 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   ])
   if (!issue) notFound()
 
+  const status = catalog.statuses.find((item) => item.id === issue.statusId)
+  const priority = catalog.priorities.find((item) => item.id === issue.priorityId)
+  const type = catalog.types.find((item) => item.id === issue.typeId)
+  const assignee = issue.members.find((member) => member.id === issue.assigneeId)?.name ?? "Unassigned"
+
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/projects/${issue.projectId}`} className="text-sm text-muted-foreground hover:underline">
-          {issue.projectName}
-        </Link>
-        <Badge variant="outline">{issueKey(issue.projectKey, issue.number)}</Badge>
-        <span className="text-xs text-muted-foreground">
-          Reported by {issue.reporterName} · {formatProjectDate(issue.createdAt)}
-        </span>
-        {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
-        <div className="ml-auto flex items-center gap-2">
-          <EditIssueButton
-            issueId={issue.id}
-            types={catalog.types}
-            statuses={catalog.statuses}
-            priorities={catalog.priorities}
-            members={issue.members}
-            defaultValues={{
-              title: issue.title,
-              description: issue.description,
-              issueTypeId: issue.typeId,
-              statusId: issue.statusId,
-              priorityId: issue.priorityId,
-              assigneeId: issue.assigneeId,
-              dueDate: issue.dueDate,
-            }}
-          />
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/projects/${issue.projectId}`} className="text-sm text-muted-foreground hover:underline">
+              {issue.projectName}
+            </Link>
+            <Badge variant="outline">{issueKey(issue.projectKey, issue.number)}</Badge>
+            {type ? <Badge variant="outline">{type.name}</Badge> : null}
+            {status ? <Badge variant="secondary">{status.name}</Badge> : null}
+            {priority ? <Badge variant="outline">{priority.name}</Badge> : null}
+            {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
+          </div>
+          <h1 className="mt-2 text-lg font-semibold tracking-tight">{issue.title}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {issue.canEdit ? (
+            <EditIssueButton
+              issueId={issue.id}
+              types={catalog.types}
+              statuses={catalog.statuses}
+              priorities={catalog.priorities}
+              members={issue.members}
+              defaultValues={{
+                title: issue.title,
+                description: issue.description,
+                issueTypeId: issue.typeId,
+                statusId: issue.statusId,
+                priorityId: issue.priorityId,
+                assigneeId: issue.assigneeId,
+                dueDate: issue.dueDate,
+              }}
+            />
+          ) : null}
           {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} /> : null}
         </div>
       </div>
-      <h1 className="text-lg font-semibold tracking-tight">{issue.title}</h1>
-      <p className="max-w-3xl whitespace-pre-wrap text-sm text-muted-foreground">{issue.description || "No description yet."}</p>
+      <dl className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Meta label="Reporter" value={issue.reporterName} hint="Created this issue" />
+        <Meta label="Assignee" value={assignee} hint="Responsible for the work" />
+        <Meta label="Updated" value={formatProjectDate(issue.updatedAt)} />
+        <Meta label="Due" value={issue.dueDate ? formatDueDate(issue.dueDate) : "No due date"} />
+      </dl>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="grid gap-6">
+          <section className="rounded-lg border bg-card px-3 py-3">
+            <h2 className="text-sm font-medium">Description</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{issue.description || "No description yet."}</p>
+          </section>
           <CommentSection
             issueId={issue.id}
             currentUserId={user.id}
@@ -106,6 +126,16 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Meta({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
 }

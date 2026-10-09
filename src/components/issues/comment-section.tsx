@@ -7,6 +7,7 @@ import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { FormDialog } from "@/components/shared/form-dialog"
+import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Textarea } from "@/components/ui/textarea"
@@ -40,9 +41,9 @@ export function CommentSection({
     <section className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Comments</h2>
-        <Button type="button" size="sm" variant="outline" onClick={() => setComposerOpen(true)}>
+        <RevealButton type="button" size="sm" variant="outline" onReveal={() => setComposerOpen(true)}>
           Add comment
-        </Button>
+        </RevealButton>
       </div>
       {comments.length === 0 ? <p className="text-sm text-muted-foreground">No comments yet.</p> : null}
       <ul className="grid gap-2">

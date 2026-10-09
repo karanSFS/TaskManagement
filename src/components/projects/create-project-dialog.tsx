@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 
 import { ProjectForm } from "@/components/projects/project-form"
-import { Button } from "@/components/ui/button"
+import { RevealButton } from "@/components/shared/pending-ui"
 import type { UpdateProjectValues } from "@/lib/validations/project"
 
 export function CreateProjectButton({
@@ -20,9 +20,9 @@ export function CreateProjectButton({
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button type="button" size={size} variant={variant} onClick={() => setOpen(true)}>
+      <RevealButton type="button" size={size} variant={variant} onReveal={() => setOpen(true)}>
         {children}
-      </Button>
+      </RevealButton>
       <ProjectForm
         mode="create"
         open={open}
@@ -48,9 +48,9 @@ export function EditProjectButton({
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <RevealButton type="button" variant="outline" size="sm" onReveal={() => setOpen(true)}>
         {label}
-      </Button>
+      </RevealButton>
       <ProjectForm mode="edit" projectId={projectId} members={members} defaultValues={defaultValues} open={open} onOpenChange={setOpen} />
     </>
   )

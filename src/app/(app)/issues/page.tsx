@@ -7,9 +7,11 @@ import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { LinkPending } from "@/components/shared/pending-ui"
 import { ListSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
-import { issueKey } from "@/lib/projects/format"
+import { formatProjectDate, issueKey } from "@/lib/projects/format"
 import { getIssueCatalog, listIssueProjects, listIssues } from "@/lib/services/issue.service"
 import { boardAssignees, issueSorts } from "@/lib/validations/issue"
 
@@ -133,25 +135,45 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
           }
         />
       ) : (
-        <ul className="divide-y rounded-lg border bg-card">
-          {result.items.map((issue) => (
-            <li key={issue.id}>
-              <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50">
-                <Link href={`/issues/${issue.id}`} className="w-24 shrink-0 text-sm font-medium text-muted-foreground hover:underline">
-                  {issueKey(issue.projectKey, issue.number)}
-                </Link>
-                <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm">
-                  {issue.title}
-                </IssueOpenButton>
-                <span className="hidden text-xs text-muted-foreground lg:inline">{issue.priority}</span>
-                <span className="hidden text-xs text-muted-foreground sm:inline">{issue.status}</span>
-                <span className="hidden w-28 truncate text-right text-xs text-muted-foreground md:inline">
-                  {issue.assigneeName ?? "Unassigned"}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead className="border-b text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Key</th>
+                <th className="px-3 py-2 font-medium">Title</th>
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">Priority</th>
+                <th className="px-3 py-2 font-medium">Assignee</th>
+                <th className="px-3 py-2 font-medium">Reporter</th>
+                <th className="px-3 py-2 font-medium">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.items.map((issue) => (
+                <tr key={issue.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                  <td className="px-3 py-2 align-middle">
+                    <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:underline">
+                      <LinkPending />
+                      {issueKey(issue.projectKey, issue.number)}
+                    </Link>
+                  </td>
+                  <td className="max-w-64 px-3 py-2 align-middle">
+                    <IssueOpenButton issueId={issue.id} className="block max-w-full truncate text-left">
+                      {issue.title}
+                    </IssueOpenButton>
+                  </td>
+                  <td className="px-3 py-2 align-middle text-muted-foreground">{issue.typeName}</td>
+                  <td className="px-3 py-2 align-middle"><Badge variant="secondary">{issue.status}</Badge></td>
+                  <td className="px-3 py-2 align-middle"><Badge variant="outline">{issue.priority}</Badge></td>
+                  <td className="max-w-32 truncate px-3 py-2 align-middle">{issue.assigneeName ?? "Unassigned"}</td>
+                  <td className="max-w-32 truncate px-3 py-2 align-middle">{issue.reporterName}</td>
+                  <td className="whitespace-nowrap px-3 py-2 align-middle text-muted-foreground">{formatProjectDate(issue.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {pages > 1 ? (
         <div className="flex items-center gap-2 text-sm">

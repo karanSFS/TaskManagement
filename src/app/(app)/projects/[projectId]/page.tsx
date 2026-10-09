@@ -1,10 +1,13 @@
 import Link from "next/link"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
+import { CircleDot } from "lucide-react"
 
 import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { EditProjectButton } from "@/components/projects/create-project-dialog"
+import { EmptyState } from "@/components/shared/empty-state"
+import { LinkPending } from "@/components/shared/pending-ui"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isProjectIcon } from "@/lib/projects/icons"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -54,10 +57,14 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
           />
         ) : null}
       </div>
-      <dl className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Your role" value={roleLabel(project.role)} />
-        <Stat label="Lead" value={project.leadName} />
+      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Open issues" value={String(project.openIssueCount)} />
+        <Stat label="Done" value={String(project.doneIssueCount)} />
         <Stat label="Members" value={String(project.memberCount)} />
+        <Stat label="Your role" value={roleLabel(project.role)} />
+      </dl>
+      <dl className="grid gap-2 sm:grid-cols-2">
+        <Stat label="Lead" value={project.leadName} />
         <Stat label="Created" value={formatProjectDate(project.createdAt)} />
       </dl>
       <section className="grid gap-2">
@@ -84,13 +91,29 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
             This project is archived. Restore it in settings to file new issues.
           </p>
         ) : null}
-        {project.issues.length === 0 ? <p className="text-sm text-muted-foreground">No issues yet.</p> : null}
+        {project.issues.length === 0 ? (
+          <EmptyState
+            icon={CircleDot}
+            title="No issues yet"
+            description={project.archivedAt ? "This project is archived, so new issues stay closed until it is restored." : "Create an issue to start tracking work in this project."}
+            action={
+              project.archivedAt ? undefined : (
+                <CreateIssueButton projectId={project.id} size="sm">
+                  New issue
+                </CreateIssueButton>
+              )
+            }
+          />
+        ) : null}
         {project.issues.length > 0 ? (
           <ul className="divide-y rounded-lg border bg-card">
             {project.issues.map((issue) => (
               <li key={issue.id}>
                 <div className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
-                  <Link href={`/issues/${issue.id}`} className="font-medium text-muted-foreground hover:underline">{issueKey(project.key, issue.number)}</Link>
+                  <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:underline">
+                    <LinkPending />
+                    {issueKey(project.key, issue.number)}
+                  </Link>
                   <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left">{issue.title}</IssueOpenButton>
                   <span className="text-xs text-muted-foreground">{issue.status}</span>
                 </div>

@@ -1,11 +1,12 @@
 "use client"
 
 import { Suspense, use, useState, type ReactNode } from "react"
-import { Plus } from "lucide-react"
+import { Loader2, Plus } from "lucide-react"
 
 import { CreateIssueForm } from "@/components/issues/create-issue-form"
 import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { FormSheet } from "@/components/shared/form-dialog"
+import { usePromisePending } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { loadCreateIssueForm } from "@/lib/actions/issues"
 
@@ -27,16 +28,12 @@ export function CreateIssueButton({
   return (
     <CreateIssueDialog
       projectId={projectId}
-      trigger={
-        <Button type="button" size={size} variant={variant} className={className}>
-          {children ?? (
-            <>
-              <Plus />
-              Create issue
-            </>
-          )}
+      trigger={(busy) => (
+        <Button type="button" size={size} variant={variant} className={className} disabled={busy} aria-busy={busy || undefined}>
+          {busy ? <Loader2 className="animate-spin" /> : children ? null : <Plus />}
+          {children ?? "Create issue"}
         </Button>
-      }
+      )}
     />
   )
 }
@@ -50,7 +47,7 @@ export function CreateIssueDialog({
   projectId?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  trigger?: ReactNode
+  trigger?: ReactNode | ((busy: boolean) => ReactNode)
 }) {
   return (
     <IssueDialogHost projectId={projectId} open={open} onOpenChange={onOpenChange} trigger={trigger} />
@@ -66,7 +63,7 @@ function IssueDialogHost({
   projectId?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  trigger?: ReactNode
+  trigger?: ReactNode | ((busy: boolean) => ReactNode)
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -82,6 +79,7 @@ function IssueDialogHost({
     })
   }
   const request = requestState.promise
+  const busy = usePromisePending(open ? request : null)
 
   function setOpen(next: boolean) {
     if (controlledOpen === undefined) setUncontrolledOpen(next)
@@ -92,7 +90,7 @@ function IssueDialogHost({
     <>
       {trigger ? (
         <span className="contents" onClick={() => setOpen(true)}>
-          {trigger}
+          {typeof trigger === "function" ? trigger(busy) : trigger}
         </span>
       ) : null}
       {open && request ? (

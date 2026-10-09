@@ -378,22 +378,69 @@ export async function updateMemberRoleRecord(
   }
 }
 
-export async function removeProjectMemberRecord(projectId: string, membershipId: string) {
+export async function removeProjectMemberRecord(actorId: string, projectId: string, membershipId: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { data: target, error: targetError } = await supabase
     .from("project_members")
-    .delete()
+    .select("id, user_id, role")
     .eq("id", membershipId)
     .eq("project_id", projectId)
-    .select("id, user_id")
+    .maybeSingle()
 
-  if (error) {
-    raiseProjectWriteError(error.message)
-  }
-
-  if (!data?.length || !data[0]) {
+  if (targetError) throw new DatabaseError("Could not load that member.")
+  if (!target || !isProjectRole(target.role)) {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
   }
 
-  return data[0].user_id
+  const { data: actor, error: actorError } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", actorId)
+    .maybeSingle()
+
+  if (actorError) throw new DatabaseError("Could not check project access.")
+  if (!actor || !isProjectRole(actor.role)) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+  }
+
+  const leaving = target.user_id === actorId
+  if (!leaving && actor.role !== "owner" && actor.role !== "admin") {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot manage members of this project.")
+  }
+
+  if (!leaving && target.role === "owner" && actor.role !== "owner") {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can remove another owner.")
+  }
+
+  if (target.role === "owner") {
+    const { count, error: countError } = await supabase
+      .from("project_members")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .eq("role", "owner")
+
+    if (countError || count === null) throw new DatabaseError("Could not check project owners.")
+    if (count <= 1) {
+      throw new AppError(
+        "LAST_OWNER",
+        "Transfer ownership to another member before leaving. A project must keep an owner.",
+        409,
+      )
+    }
+  }
+
+  const { error } = await supabase.from("project_members").delete().eq("id", membershipId).eq("project_id", projectId)
+  if (error) raiseProjectWriteError(error.message)
+
+  const { data: still, error: stillError } = await supabase
+    .from("project_members")
+    .select("id")
+    .eq("id", membershipId)
+    .maybeSingle()
+
+  if (stillError) throw new DatabaseError("Could not confirm the member was removed.")
+  if (still) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+
+  return target.user_id
 }

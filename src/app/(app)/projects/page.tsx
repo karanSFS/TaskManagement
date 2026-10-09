@@ -8,6 +8,7 @@ import { CreateProjectButton, EditProjectButton } from "@/components/projects/cr
 import { ProjectBrowser } from "@/components/projects/project-browser"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { EmptyState } from "@/components/shared/empty-state"
+import { LinkPending } from "@/components/shared/pending-ui"
 import { ProjectsSkeleton } from "@/components/shared/page-skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -124,7 +125,9 @@ function ProjectCard({ project, userId }: { project: ProjectSummary; userId: str
 
   return (
     <li className="relative rounded-lg border bg-card">
-      <Link href={`/projects/${project.id}`} className="absolute inset-0 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={`Open ${project.name}`} />
+      <Link href={`/projects/${project.id}`} className="absolute inset-0 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={`Open ${project.name}`}>
+        <LinkPending className="absolute top-3 right-3 size-4" />
+      </Link>
       <div className="pointer-events-none flex items-start gap-3 px-3 py-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           <ProjectIcon name={project.icon} />
@@ -143,7 +146,10 @@ function ProjectCard({ project, userId }: { project: ProjectSummary; userId: str
       </div>
       <div className="relative z-10 flex flex-wrap items-center gap-2 border-t px-3 py-2">
         <Button asChild size="sm" variant="ghost">
-          <Link href={`/projects/${project.id}`}>Open</Link>
+          <Link href={`/projects/${project.id}`}>
+            <LinkPending />
+            Open
+          </Link>
         </Button>
         {canEdit && leadId ? (
           <EditProjectButton

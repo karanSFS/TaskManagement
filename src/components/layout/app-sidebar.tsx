@@ -18,6 +18,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { isNavActive, mainNav, utilityNav } from "@/lib/config/nav"
+import { LinkPending } from "@/components/shared/pending-ui"
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -57,9 +58,10 @@ function NavList({
       {items.map((item) => (
         <SidebarMenuItem key={item.href}>
           <SidebarMenuButton asChild isActive={isNavActive(pathname, item.href)} tooltip={item.title}>
-            <Link href={item.href}>
+            <Link href={item.href} className="flex items-center gap-2">
               <item.icon />
               <span>{item.title}</span>
+              <LinkPending />
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

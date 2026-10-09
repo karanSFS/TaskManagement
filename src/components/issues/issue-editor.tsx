@@ -8,6 +8,7 @@ import { toast } from "sonner"
 
 import { FormSheet } from "@/components/shared/form-dialog"
 
+import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -31,9 +32,9 @@ export function EditIssueButton(props: {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <RevealButton type="button" variant="outline" size="sm" onReveal={() => setOpen(true)}>
         Edit issue
-      </Button>
+      </RevealButton>
       <FormSheet
         open={open}
         onOpenChange={setOpen}

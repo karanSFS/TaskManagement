@@ -36,31 +36,42 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
     : project.members[0]?.userId
 
   return (
-    <div className="grid gap-6">
-      <dl className="grid gap-1 text-sm text-muted-foreground">
-        <div>Created {formatProjectDate(project.createdAt)} by {project.createdByName}</div>
-      </dl>
-      {canEdit && leadId ? (
-        <EditProjectButton
-          projectId={project.id}
-          members={project.members.map((member) => ({ id: member.userId, name: member.name }))}
-          defaultValues={{
-            name: project.name,
-            key: project.key,
-            description: project.description,
-            icon: project.icon && isProjectIcon(project.icon) ? project.icon : "",
-            leadId,
-          }}
-        />
-      ) : (
-        <p className="text-sm text-muted-foreground">Only the lead, an owner, or an admin can change these settings.</p>
-      )}
+    <div className="grid gap-4">
+      <section className="rounded-lg border bg-card px-3 py-3">
+        <h2 className="text-sm font-medium">Details</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Created {formatProjectDate(project.createdAt)} by {project.createdByName}.
+        </p>
+      </section>
+      <section className="grid gap-3 rounded-lg border bg-card px-3 py-3">
+        <div>
+          <h2 className="text-sm font-medium">Project settings</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {canEdit
+              ? "Name, key, description, icon, and lead."
+              : "Only the lead, an owner, or an admin can change these settings."}
+          </p>
+        </div>
+        {canEdit && leadId ? (
+          <EditProjectButton
+            projectId={project.id}
+            members={project.members.map((member) => ({ id: member.userId, name: member.name }))}
+            defaultValues={{
+              name: project.name,
+              key: project.key,
+              description: project.description,
+              icon: project.icon && isProjectIcon(project.icon) ? project.icon : "",
+              leadId,
+            }}
+          />
+        ) : null}
+      </section>
       {canEdit ? (
-        <section className="grid max-w-xl gap-2 border-t pt-4">
-          <h2 className="text-sm font-medium">{project.archivedAt ? "Restore" : "Archive"}</h2>
+        <section className="grid gap-2 rounded-lg border bg-card px-3 py-3">
+          <h2 className="text-sm font-medium">{project.archivedAt ? "Restore project" : "Archive project"}</h2>
           <p className="text-sm text-muted-foreground">
             {project.archivedAt
-              ? "Restoring the project lets members file new issues again."
+              ? "Restoring the project lets members file new issues again. Existing issues stay as they are."
               : "Archived projects stay readable, but nobody can file new issues in them."}
           </p>
           <ArchiveProjectButton projectId={project.id} archived={Boolean(project.archivedAt)} />

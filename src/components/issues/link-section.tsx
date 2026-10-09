@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { FormDialog } from "@/components/shared/form-dialog"
+import { LinkPending, RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { addIssueLink, removeIssueLink } from "@/lib/actions/issues"
 import { issueKey } from "@/lib/projects/format"
@@ -40,9 +41,9 @@ export function LinkSection({
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Links</h2>
         {choices.length > 0 ? (
-          <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
             Link issue
-          </Button>
+          </RevealButton>
         ) : null}
       </div>
       {links.length === 0 ? <p className="text-sm text-muted-foreground">No linked issues.</p> : null}
@@ -54,7 +55,8 @@ export function LinkSection({
             return (
               <li key={link.id} className="flex items-center gap-2 text-sm">
                 <span className="text-xs text-muted-foreground">{text}</span>
-                <Link href={`/issues/${link.issueId}`} className="min-w-0 flex-1 truncate hover:underline">
+                <Link href={`/issues/${link.issueId}`} className="inline-flex min-w-0 flex-1 items-center gap-1 truncate hover:underline">
+                  <LinkPending />
                   {issueKey(link.projectKey, link.number)} {link.title}
                 </Link>
                 <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setRemoveId(link.id)}>

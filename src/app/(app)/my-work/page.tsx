@@ -7,6 +7,7 @@ import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
+import { LinkPending } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
@@ -176,7 +177,8 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
                       {issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Link href={`/issues/${issue.id}`} className="text-xs font-medium text-primary hover:underline">
+                      <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                        <LinkPending />
                         Open
                       </Link>
                     </td>

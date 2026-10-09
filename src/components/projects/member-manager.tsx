@@ -8,6 +8,7 @@ import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { FormDialog } from "@/components/shared/form-dialog"
+import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -52,6 +53,7 @@ export function MemberManager({
             roles={roles}
             canManage={canManage && (actorRole === "owner" || member.role !== "owner")}
             isLastOwner={member.role === "owner" && ownerCount === 1}
+            candidates={members.filter((candidate) => candidate.id !== member.id)}
           />
         ))}
       </ul>
@@ -82,9 +84,9 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
 
   return (
     <>
-    <Button type="button" className="w-fit" onClick={() => setOpen(true)}>
+    <RevealButton type="button" className="w-fit" onReveal={() => setOpen(true)}>
       Add member
-    </Button>
+    </RevealButton>
     <FormDialog
       open={open}
       onOpenChange={(next) => {
@@ -151,16 +153,19 @@ function MemberItem({
   roles,
   canManage,
   isLastOwner,
+  candidates,
 }: {
   projectId: string
   member: MemberRow
   roles: ProjectRole[]
   canManage: boolean
   isLastOwner: boolean
+  candidates: MemberRow[]
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [role, setRole] = useState(member.role)
   const canRemove = !isLastOwner && (canManage || member.isYou)
 
   return (
@@ -174,16 +179,22 @@ function MemberItem({
       {canManage ? (
         <select
           className={`${fieldClass} w-28`}
-          value={member.role}
+          value={role}
           disabled={pending || (isLastOwner && member.role === "owner")}
           aria-label={`Role for ${member.name}`}
           onChange={(event) => {
-            const role = event.target.value as ProjectRole
+            const next = event.target.value as ProjectRole
+            if (next === role) return
+            setRole(next)
             startTransition(async () => {
-              const result = await updateMemberRole(projectId, member.id, role)
+              const result = await updateMemberRole(projectId, member.id, next)
               if (result?.error) {
+                setRole(member.role)
                 toast.error(result.error)
+                return
               }
+              toast.success(result?.success ?? "Role updated.")
+              router.refresh()
             })
           }}
         >
@@ -199,14 +210,18 @@ function MemberItem({
       )}
       {canRemove ? (
         <>
-        <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setConfirmOpen(true)}>
+        <RevealButton type="button" size="sm" variant="ghost" disabled={pending} onReveal={() => setConfirmOpen(true)}>
           {member.isYou ? "Leave" : "Remove"}
-        </Button>
+        </RevealButton>
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title={member.isYou ? "Leave this project?" : `Remove ${member.name}?`}
-          description={member.isYou ? "You will lose access to its issues." : "Their issues in this project become unassigned."}
+          description={
+            member.isYou
+              ? "You will lose access to its issues. Open issues assigned to you become unassigned."
+              : "They lose access to this project. Open issues assigned to them become unassigned."
+          }
           confirmLabel={member.isYou ? "Leave project" : "Remove member"}
           pending={pending}
           destructive
@@ -219,12 +234,91 @@ function MemberItem({
               }
               toast.success(result?.success ?? "Member removed.")
               setConfirmOpen(false)
-              if (result?.href) router.push(result.href)
+              if (result?.href) {
+                router.push(result.href)
+                return
+              }
+              router.refresh()
             })
           }}
         />
         </>
+      ) : isLastOwner && member.isYou && candidates.length > 0 ? (
+        <TransferOwnership projectId={projectId} selfId={member.id} candidates={candidates} />
+      ) : isLastOwner && member.isYou ? (
+        <p className="max-w-48 text-right text-xs text-muted-foreground">Add another member before you can leave.</p>
       ) : null}
     </li>
+  )
+}
+
+function TransferOwnership({
+  projectId,
+  selfId,
+  candidates,
+}: {
+  projectId: string
+  selfId: string
+  candidates: MemberRow[]
+}) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+  const [targetId, setTargetId] = useState(candidates[0]?.id ?? "")
+  const target = candidates.find((candidate) => candidate.id === targetId) ?? candidates[0]
+
+  return (
+    <>
+      <RevealButton type="button" size="sm" variant="outline" disabled={pending || !target} onReveal={() => setOpen(true)}>
+        Transfer ownership
+      </RevealButton>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Transfer ownership and leave?"
+        description={
+          target
+            ? `${target.name} becomes an owner, then you leave the project. A project always keeps an owner.`
+            : "Choose a member to become the owner."
+        }
+        confirmLabel="Transfer and leave"
+        pending={pending}
+        destructive
+        onConfirm={() => {
+          if (!target) return
+          startTransition(async () => {
+            const promoted = await updateMemberRole(projectId, target.id, "owner")
+            if (promoted?.error) {
+              toast.error(promoted.error)
+              return
+            }
+            const left = await removeProjectMember(projectId, selfId)
+            if (left?.error) {
+              toast.error(left.error)
+              router.refresh()
+              return
+            }
+            toast.success("Ownership transferred. You left the project.")
+            setOpen(false)
+            router.push(left?.href ?? "/projects")
+          })
+        }}
+      />
+      {candidates.length > 1 ? (
+        <select
+          className={`${fieldClass} w-36`}
+          value={target?.id ?? ""}
+          aria-label="New owner"
+          disabled={pending}
+          onChange={(event) => setTargetId(event.target.value)}
+        >
+          {candidates.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.name}
+            </option>
+          ))}
+        </select>
+      ) : null}
+    </>
   )
 }

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { DashboardSkeleton } from "@/components/shared/page-skeleton"
+import { LinkPending } from "@/components/shared/pending-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -256,7 +257,10 @@ function EmptyPanel({
       <p className="text-sm text-muted-foreground">{description}</p>
       {actionSlot ?? (
         <Button asChild size="sm" variant="outline" className="w-fit">
-          <Link href={href ?? "/"}>{action}</Link>
+          <Link href={href ?? "/"}>
+            <LinkPending />
+            {action}
+          </Link>
         </Button>
       )}
     </div>
@@ -267,6 +271,7 @@ function ProjectRow({ project }: { project: ProjectSummary }) {
   return (
     <li>
       <Link href={`/projects/${project.id}`} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50">
+        <LinkPending />
         <ProjectIcon name={project.icon} />
         <span className="min-w-0 flex-1 truncate text-sm">{project.name}</span>
         <span className="font-mono text-xs text-muted-foreground">{project.key}</span>

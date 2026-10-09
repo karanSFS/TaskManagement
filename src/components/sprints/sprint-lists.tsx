@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { LinkPending, RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { assignIssueToSprint, completeSprint, startSprint } from "@/lib/actions/sprints"
 import { issueKey } from "@/lib/projects/format"
@@ -201,7 +202,8 @@ function IssueLine({
 }) {
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
-      <Link href={`/issues/${issueId}`} className="w-24 shrink-0 text-sm font-medium text-muted-foreground hover:underline">
+      <Link href={`/issues/${issueId}`} className="inline-flex w-24 shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:underline">
+        <LinkPending />
         {issueKey(projectKey, number)}
       </Link>
       <IssueOpenButton issueId={issueId} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
@@ -217,9 +219,9 @@ function CompleteSprintButton({ projectId, sprintId }: { projectId: string; spri
   const [pending, startTransition] = useTransition()
   return (
     <>
-      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setOpen(true)}>
+      <RevealButton type="button" size="sm" variant="outline" disabled={pending} onReveal={() => setOpen(true)}>
         {pending ? "Completing…" : "Complete sprint"}
-      </Button>
+      </RevealButton>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}

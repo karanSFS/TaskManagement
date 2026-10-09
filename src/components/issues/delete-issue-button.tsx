@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { Button } from "@/components/ui/button"
+import { RevealButton } from "@/components/shared/pending-ui"
 import { deleteIssue } from "@/lib/actions/issues"
 
 export function DeleteIssueButton({ issueId, issueKey }: { issueId: string; issueKey: string }) {
@@ -15,9 +15,9 @@ export function DeleteIssueButton({ issueId, issueKey }: { issueId: string; issu
 
   return (
     <>
-      <Button type="button" size="sm" variant="ghost" className="text-destructive" disabled={pending} onClick={() => setOpen(true)}>
+      <RevealButton type="button" size="sm" variant="ghost" className="text-destructive" disabled={pending} onReveal={() => setOpen(true)}>
         Delete issue
-      </Button>
+      </RevealButton>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}

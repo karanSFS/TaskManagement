@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
 import { FormDialog } from "@/components/shared/form-dialog"
+import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -18,9 +19,9 @@ export function PlanSprintButton({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <RevealButton type="button" onReveal={() => setOpen(true)}>
         Plan sprint
-      </Button>
+      </RevealButton>
       <CreateSprintForm projectId={projectId} open={open} onOpenChange={setOpen} />
     </>
   )

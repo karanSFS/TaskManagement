@@ -2,17 +2,22 @@
 
 import Link from "next/link"
 import { createContext, Suspense, use, useContext, useState, type ReactNode } from "react"
+import { Loader2 } from "lucide-react"
 
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
 import { IssueEditor } from "@/components/issues/issue-editor"
 import { FormSheet } from "@/components/shared/form-dialog"
+import { LinkPending, usePromisePending } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { loadIssueDrawer } from "@/lib/actions/issues"
 import { issueKey } from "@/lib/projects/format"
 
 type DrawerData = Awaited<ReturnType<typeof loadIssueDrawer>>
 
-const OpenIssueContext = createContext<(issueId: string) => void>(() => undefined)
+const OpenIssueContext = createContext<{ open: (issueId: string) => void; pendingId: string | null }>({
+  open: () => undefined,
+  pendingId: null,
+})
 
 export function IssueDrawerProvider({ children }: { children: ReactNode }) {
   const [issueId, setIssueId] = useState<string | null>(null)
@@ -27,9 +32,10 @@ export function IssueDrawerProvider({ children }: { children: ReactNode }) {
     })
   }
   const request = requestState.promise
+  const pending = usePromisePending(request)
 
   return (
-    <OpenIssueContext.Provider value={setIssueId}>
+    <OpenIssueContext.Provider value={{ open: setIssueId, pendingId: pending ? issueId : null }}>
       {children}
       {issueId && request ? (
         <Suspense
@@ -49,7 +55,7 @@ export function IssueDrawerProvider({ children }: { children: ReactNode }) {
 }
 
 export function useOpenIssue() {
-  return useContext(OpenIssueContext)
+  return useContext(OpenIssueContext).open
 }
 
 export function IssueOpenButton({
@@ -61,9 +67,11 @@ export function IssueOpenButton({
   className?: string
   children: ReactNode
 }) {
-  const openIssue = useOpenIssue()
+  const { open, pendingId } = useContext(OpenIssueContext)
+  const pending = pendingId === issueId
   return (
-    <button type="button" className={className} onClick={() => openIssue(issueId)}>
+    <button type="button" className={className} aria-busy={pending || undefined} onClick={() => open(issueId)}>
+      {pending ? <Loader2 className="mr-1 inline size-3.5 animate-spin" aria-hidden /> : null}
       {children}
     </button>
   )
@@ -99,7 +107,10 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
     >
       <div className="flex items-center justify-between gap-2">
         <Button asChild variant="outline" size="sm">
-          <Link href={`/issues/${issue.id}`}>Open full page</Link>
+          <Link href={`/issues/${issue.id}`}>
+            <LinkPending />
+            Open full page
+          </Link>
         </Button>
         {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={key} /> : null}
       </div>
