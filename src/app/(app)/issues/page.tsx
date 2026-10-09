@@ -1,7 +1,9 @@
 import Link from "next/link"
 import { Suspense } from "react"
+import { CircleDot } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -68,7 +70,7 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
   return (
     <div className="grid gap-3">
       <form action="/issues" className="flex flex-wrap gap-2">
-        <input name="q" defaultValue={query} placeholder="Title, key, or label" className={`${fieldClass} w-full max-w-xs`} />
+        <input name="q" defaultValue={query} placeholder="Title, key, or label" aria-label="Search issues" className={`${fieldClass} w-full max-w-xs`} />
         <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass} aria-label="Project">
           <option value="">All projects</option>
           {projects.map((project) => (
@@ -120,9 +122,18 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
         {result.total} {result.total === 1 ? "issue" : "issues"}
       </p>
       {result.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {filtered ? "No issues match these filters." : "No issues yet. Create one to get started."}
-        </p>
+        <EmptyState
+          icon={CircleDot}
+          title={filtered ? "No matching issues" : "No issues yet"}
+          description={filtered ? "No issues match these filters." : "Create an issue to start tracking work."}
+          action={
+            filtered ? undefined : (
+              <Button asChild size="sm">
+                <Link href="/issues/new">New issue</Link>
+              </Button>
+            )
+          }
+        />
       ) : (
         <ul className="divide-y rounded-lg border bg-card">
           {result.items.map((issue) => (

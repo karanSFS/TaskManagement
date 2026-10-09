@@ -8,9 +8,9 @@ The living plan is [PLAN.md](PLAN.md). Read it before starting a phase. When a p
 
 ## Current progress
 
-Phases 1–8 are done: foundation, the hosted database, projects, issues (including subtasks and links), My Work, the board, the backlog, sprints, search, notifications, and attachments.
+Phases 1–10 are done: foundation, the hosted database, projects, issues (including subtasks and links), My Work, the board, the backlog, sprints, search, notifications, attachments, reports, and production polish.
 
-**Next phase:** Phase 9, dashboard and reports. Do not start it until it is requested.
+**Next phase:** none. Do not start new work until it is requested.
 
 The app in `.env.local` talks to the hosted Supabase project, not the local Docker stack. Do not replace those values with `127.0.0.1` unless you mean to develop against a local database. Never reset the hosted database. Schema changes belong in `supabase/migrations/` and go to the hosted project with `npx supabase db push --dry-run` first.
 
@@ -57,6 +57,7 @@ Local signup confirmation is enabled. Open the email inbox printed by `npm run d
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Redirect, formatting, attachment, and auth checks |
 | `npm run db:start` | Start local Supabase |
 | `npm run db:stop` | Stop local Supabase |
 | `npm run db:status` | Print local URLs and keys |

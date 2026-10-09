@@ -84,7 +84,7 @@ export function CommentSection({
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <Textarea placeholder="Add a comment. Mention a teammate with @Name." {...field} />
+                  <Textarea placeholder="Add a comment. Mention a teammate with @Name." aria-label="Comment" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

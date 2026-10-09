@@ -16,14 +16,14 @@ export default function RootError({
   }, [error]);
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-3 px-4 text-center">
+    <main id="content" className="flex min-h-svh flex-col items-center justify-center gap-3 px-4 text-center">
       <h1 className="text-lg font-semibold">TaskForge hit an error</h1>
       <p className="max-w-sm text-sm text-muted-foreground">
-        The page could not be rendered. Retry, or return after local Supabase is running.
+        The page could not be rendered. Try again.
       </p>
       <Button variant="outline" onClick={reset}>
         Try again
       </Button>
-    </div>
+    </main>
   );
 }

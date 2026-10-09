@@ -5,7 +5,7 @@ import { AuthenticationError } from "@/lib/errors/authentication-error"
 import { AuthorizationError } from "@/lib/errors/authorization-error"
 import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
-import { formatDueDate } from "@/lib/projects/format"
+import { formatDueDate, issueKey } from "@/lib/projects/format"
 import { createClient } from "@/lib/supabase/server"
 import type { CreateIssueValues, UpdateIssueValues } from "@/lib/validations/issue"
 
@@ -541,6 +541,77 @@ function historySummary(field: string, newValue: string | null, names: Map<strin
   if (field === "due_date") return newValue ? `Due date set to ${formatDueDate(newValue)}` : "Due date cleared"
   if (field === "sprint") return newValue ? "Moved to a sprint" : "Removed from the sprint"
   return `${field} updated`
+}
+
+export type ActivityItem = {
+  id: string
+  summary: string
+  createdAt: string
+  actorName: string
+  issueId: string
+  issueKey: string
+  issueTitle: string
+}
+
+export async function listRecentActivity(userId: string): Promise<ActivityItem[]> {
+  void userId
+  const supabase = await createClient()
+  const catalog = await getIssueCatalog()
+  const { data, error } = await supabase
+    .from("issue_history")
+    .select(
+      "id, field, new_value, created_at, actor_id, issue:issues!issue_history_issue_id_fkey(id, issue_number, title, project:projects!issues_project_id_fkey(key))",
+    )
+    .order("created_at", { ascending: false })
+    .limit(12)
+
+  if (error) throw new DatabaseError("Could not load recent activity.")
+
+  const rows = data ?? []
+  const names = new Map<string, string>()
+  for (const status of catalog.statuses) names.set(status.id, status.name)
+  for (const priority of catalog.priorities) names.set(priority.id, priority.name)
+
+  const profileIds = [
+    ...new Set(
+      rows.flatMap((row) => {
+        const ids = row.actor_id ? [row.actor_id] : []
+        if (row.field === "assignee" && row.new_value && isUuid(row.new_value)) ids.push(row.new_value)
+        return ids
+      }),
+    ),
+  ]
+  if (profileIds.length > 0) {
+    const profiles = await supabase.from("profiles").select("id, display_name").in("id", profileIds)
+    if (profiles.error) throw new DatabaseError("Could not load recent activity.")
+    for (const profile of profiles.data ?? []) names.set(profile.id, profile.display_name)
+  }
+
+  return rows.flatMap((row) => {
+    const issue = one(row.issue as ActivityIssue | ActivityIssue[] | null)
+    const project = one(issue?.project ?? null)
+    if (!issue || !project?.key) return []
+    return [{
+      id: row.id,
+      summary: historySummary(row.field, row.new_value, names),
+      createdAt: row.created_at,
+      actorName: row.actor_id ? (names.get(row.actor_id) ?? "Former member") : "TaskForge",
+      issueId: issue.id,
+      issueKey: issueKey(project.key, issue.issue_number),
+      issueTitle: issue.title,
+    }]
+  })
+}
+
+type ActivityIssue = {
+  id: string
+  issue_number: number
+  title: string
+  project: { key: string } | { key: string }[] | null
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 const boardLimit = 200

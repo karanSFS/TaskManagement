@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { displayName } from "@/lib/auth/user"
-import { issueKey } from "@/lib/projects/format"
-import { listMyWork } from "@/lib/services/issue.service"
+import { issueKey, formatDueDate } from "@/lib/projects/format"
+import { listMyWork, listRecentActivity } from "@/lib/services/issue.service"
 import { getProjects } from "@/lib/services/project.service"
 
 export const metadata = {
@@ -26,7 +26,7 @@ async function HomeContent() {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const [projects, work] = await Promise.all([getProjects(user.id), listMyWork(user.id)])
+  const [projects, work, activity] = await Promise.all([getProjects(user.id), listMyWork(user.id), listRecentActivity(user.id)])
   const active = projects.filter((project) => !project.archivedAt)
   const openIssues = active.reduce((total, project) => total + project.openIssueCount, 0)
 
@@ -71,11 +71,50 @@ async function HomeContent() {
           </ul>
         )}
       </section>
+      <section className="grid gap-2">
+        <h2 className="text-sm font-medium">Due soon</h2>
+        {work.dueSoon.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing assigned to you or reported by you is due this week.</p>
+        ) : (
+          <ul className="divide-y rounded-lg border bg-card">
+            {work.dueSoon.items.slice(0, 5).map((issue) => (
+              <li key={issue.id}>
+                <Link href={`/issues/${issue.id}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50">
+                  <span className="w-24 shrink-0 text-sm font-medium text-muted-foreground">
+                    {issueKey(issue.projectKey, issue.number)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
+                  <span className="text-xs text-muted-foreground">{issue.dueDate ? formatDueDate(issue.dueDate) : ""}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="grid gap-2">
+        <h2 className="text-sm font-medium">Recent activity</h2>
+        {activity.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No issue activity yet.</p>
+        ) : (
+          <ul className="divide-y rounded-lg border bg-card">
+            {activity.map((entry) => (
+              <li key={entry.id}>
+                <Link href={`/issues/${entry.issueId}`} className="grid gap-0.5 px-3 py-2.5 hover:bg-muted/50">
+                  <span className="text-sm">{entry.summary}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {entry.actorName} · {entry.issueKey} {entry.issueTitle}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section className="rounded-lg border bg-card px-4 py-3">
         <h2 className="text-sm font-medium">Keyboard</h2>
         <ul className="mt-2 grid gap-1 text-sm text-muted-foreground sm:grid-cols-3">
           <li>
-            <span className="font-mono text-foreground">/</span> search pages
+            <span className="font-mono text-foreground">/</span> search
           </li>
           <li>
             <span className="font-mono text-foreground">C</span> create issue

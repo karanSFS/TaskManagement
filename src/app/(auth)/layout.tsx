@@ -9,7 +9,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <Logo />
         <p className="text-sm text-muted-foreground">Ship work, not tickets.</p>
       </div>
-      <div className="w-full max-w-sm">{children}</div>
+      <main id="content" tabIndex={-1} className="w-full max-w-sm outline-none">
+        {children}
+      </main>
     </div>
   )
 }

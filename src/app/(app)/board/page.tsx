@@ -69,7 +69,7 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
           <option value="me">Assigned to me</option>
           <option value="unassigned">Unassigned</option>
         </select>
-        <input name="q" defaultValue={query} placeholder="Search titles" className={`${fieldClass} w-full max-w-xs`} />
+        <input name="q" defaultValue={query} placeholder="Search titles" aria-label="Search titles" className={`${fieldClass} w-full max-w-xs`} />
         <Button type="submit" variant="outline" size="sm">
           Apply
         </Button>

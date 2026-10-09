@@ -1,10 +1,12 @@
 "use client"
 
+import { Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/shared/empty-state"
 import { markAllRead, markRead } from "@/lib/actions/notifications"
 import { notificationHref, notificationLabel } from "@/lib/notifications/format"
 import { formatProjectDate } from "@/lib/projects/format"
@@ -33,7 +35,11 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
         </Button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{unread ? "No unread notifications." : "No notifications yet."}</p>
+        <EmptyState
+          icon={Bell}
+          title={unread ? "No unread notifications" : "No notifications yet"}
+          description={unread ? "You are caught up." : "Assignments, mentions, and comments will show up here."}
+        />
       ) : (
         <ul className="divide-y rounded-lg border bg-card">
           {items.map((item) => (

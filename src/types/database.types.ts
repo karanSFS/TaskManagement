@@ -787,6 +787,26 @@ export type Database = {
           project_id: string
         }[]
       }
+      report_issue_groups: {
+        Args: { target_project_id?: string }
+        Returns: {
+          group_kind: string
+          group_name: string
+          group_order: number
+          issue_count: number
+        }[]
+      }
+      report_sprints: {
+        Args: { target_project_id?: string }
+        Returns: {
+          done_count: number
+          open_count: number
+          project_key: string
+          sprint_id: string
+          sprint_name: string
+          sprint_status: string
+        }[]
+      }
       search_issues: {
         Args: {
           assignee_filter?: string

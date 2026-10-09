@@ -8,7 +8,7 @@ The visual system, name, and interface are TaskForge's own. The workflow can fee
 
 ## Status
 
-Last updated: 2026-10-08.
+Last updated: 2026-10-09.
 
 | Phase | Name | Status |
 | --- | --- | --- |
@@ -21,12 +21,12 @@ Last updated: 2026-10-08.
 | 6 | Backlog and sprints | Done. Plan, start, and complete sprints. One active sprint per project. |
 | 7 | Search and filters | Done. Issues search by key, title, and label. The list sorts and filters in Postgres. |
 | 8 | Notifications and storage | Done. Inbox, mentions, private attachments, and realtime updates. |
-| 9 | Dashboard and reports | Home shows real project and assignment counts. Reports and charts are not built. |
-| 10 | Production polish | Not started |
+| 9 | Dashboard and reports | Done. Home shows open work, assignments, due dates, and recent activity. Reports chart projects, sprints, and issues. |
+| 10 | Production polish | Done. Error copy, skip link, empty states, security headers, and tests. |
 
-**Next step:** Phase 9, dashboard and reports. Home already shows project and assignment counts. Reports and charts are not built. Do not start production polish in the same step.
+**Next step:** Phases 1–10 are done. Do not add a new phase unless it is requested.
 
-A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Reports are still a later phase.
+A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -74,7 +74,7 @@ npx supabase gen types typescript --linked > src/types/database.types.ts
 
 Do not edit production tables by hand in the Supabase dashboard. `npx supabase` needs to run outside the sandbox because it reads `~/.supabase`. Do not print access tokens or keys.
 
-Signup and password reset use `/auth/confirm` with `token_hash`. Hosted email does not use local Mailpit. The signup success copy still mentions Mailpit and should be corrected when auth copy is next touched.
+Signup and password reset use `/auth/confirm` with `token_hash`. Hosted email does not use local Mailpit. The signup success copy asks the user to open the confirmation link.
 
 ## Request flow
 
@@ -143,6 +143,7 @@ Migrations:
 - `supabase/migrations/20261008102923_taskforge_schema.sql`
 - `supabase/migrations/20261008110403_project_members_and_leads.sql`
 - `supabase/migrations/20261009040943_mention_notifications.sql`
+- `supabase/migrations/20261009041525_reports.sql`
 
 Tables: `profiles`, `projects`, `project_members`, `issues`, `issue_types`, `issue_statuses`, `priorities`, `labels`, `issue_labels`, `comments`, `attachments`, `issue_history`, `sprints`, `sprint_issues`, `notifications`, `issue_links`.
 
@@ -207,11 +208,11 @@ Attachments upload from the issue page straight into the private `attachments` b
 
 ### Phase 9 — Dashboard and reports
 
-Home should show open work, assignments, and recent activity. Reports use Recharts: project metrics, sprint analytics, issue analytics.
+Done. Home shows active projects, open issues, issues assigned to you, work due within 7 days, and the latest 12 history rows you can see. `/reports` charts open and done issues per active project, the latest 12 sprints, and issue counts by status, priority, and type. Totals come from `public.report_sprints` and `public.report_issue_groups`, which are security invoker. A project filter narrows the sprint and issue charts. Archived projects stay off the project chart.
 
 ### Phase 10 — Production polish
 
-Performance, accessibility, responsive layout, error and loading states, empty states, security, and tests. The app error copy still says “local Supabase” and should be updated when this phase is touched.
+Done. Error pages no longer mention a local database. A skip link jumps to the main content. Loading states announce themselves. The issues list and notification inbox use the shared empty state. Report charts include a text equivalent and scroll sideways on a narrow screen. Responses send `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and `Permissions-Policy`, and they do not advertise Next.js. Redirect targets are limited to internal paths, including encoded `//` tricks. `npm test` covers redirects, issue keys, notification links, attachment types, and auth validation.
 
 ## UI notes that already caused bugs
 
@@ -231,7 +232,8 @@ src/components/layout          sidebar, top bar, search
 src/components/projects        project forms and members
 src/components/issues          issue form, editor, comments, labels, subtasks, links, attachments
 src/components/notifications   inbox
-src/lib/services               project, issue, profile, notification, and attachment services
+src/components/reports         report charts
+src/lib/services               project, issue, profile, notification, attachment, and report services
 src/lib/actions                auth, projects, issues
 src/lib/errors                 AppError classes
 src/lib/validations            Zod schemas
@@ -247,7 +249,7 @@ src/types/database.types.ts    generated types
 3. Copy `.env.local.example` to `.env.local` and fill the hosted URL and anon key. Do not commit that file.
 4. `npm run dev`
 5. Read this file. Implement only the next requested phase.
-6. Run `npm run typecheck` and `npm run lint` before calling the work done.
+6. Run `npm run typecheck`, `npm run lint`, and `npm test` before calling the work done.
 7. For UI changes, click through the flow in the browser.
 8. Update `PLAN.md` and `README.md` before calling the phase done.
 9. Commit only when asked. Never commit `.env.local`.

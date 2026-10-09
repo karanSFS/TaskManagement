@@ -35,7 +35,11 @@ async function AuthenticatedShell({ children }: { children: ReactNode }) {
           user={{ id: user.id, email: user.email ?? "", fullName: displayName(user) }}
           notifications={notifications}
         />
-        <div className="flex-1 px-3 py-4 md:px-5">{children}</div>
+        <div className="flex-1 px-3 py-4 md:px-5">
+          <main id="content" tabIndex={-1} className="min-w-0 outline-none">
+            {children}
+          </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )
