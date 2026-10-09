@@ -37,7 +37,11 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 const notificationSelect =
   "id, kind, body, read_at, created_at, issue_id, project_id, actor:profiles!notifications_actor_id_fkey(display_name), issue:issues!notifications_issue_id_fkey(issue_number, title, project:projects!issues_project_id_fkey(key, name)), project:projects!notifications_project_id_fkey(name)"
 
-export async function listNotifications(userId: string, page: number, unreadOnly = false) {
+export async function listNotifications(
+  userId: string,
+  page: number,
+  options: { unread?: boolean; kind?: string } = {},
+) {
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const from = (safePage - 1) * pageSize
   const supabase = await createClient()
@@ -48,10 +52,11 @@ export async function listNotifications(userId: string, page: number, unreadOnly
     .order("created_at", { ascending: false })
     .range(from, from + pageSize - 1)
 
-  if (unreadOnly) query = query.is("read_at", null)
+  if (options.unread) query = query.is("read_at", null)
+  if (options.kind) query = query.eq("kind", options.kind)
 
   const { data, error, count } = await query
-  if (error) throw new DatabaseError("Could not load notifications.")
+  if (error || data === null || count === null) throw new DatabaseError("Could not load notifications.")
 
   return {
     page: safePage,
@@ -77,11 +82,13 @@ export async function listNotificationPreview(userId: string) {
       .is("read_at", null),
   ])
 
-  if (list.error || unread.error) throw new DatabaseError("Could not load notifications.")
+  if (list.error || list.data === null || unread.error || unread.count === null) {
+    throw new DatabaseError("Could not load notifications.")
+  }
 
   return {
-    unread: unread.count ?? 0,
-    items: (list.data ?? []).map(mapNotification),
+    unread: unread.count,
+    items: list.data.map(mapNotification),
   }
 }
 

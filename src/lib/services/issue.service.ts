@@ -87,13 +87,18 @@ export type BoardCard = {
   priority: string
   assigneeName: string | null
   statusId: string
+  sprintId: string | null
+  sprintName: string | null
 }
 
 export type BoardColumn = {
   id: string
   name: string
+  category: string
   issues: BoardCard[]
 }
+
+export type BoardSprint = { id: string; name: string }
 
 export type BoardData = {
   projectId: string
@@ -103,6 +108,7 @@ export type BoardData = {
   total: number
   shown: number
   columns: BoardColumn[]
+  sprints: BoardSprint[]
 }
 
 export type IssueComment = {
@@ -786,7 +792,7 @@ export async function listBoard(
   let request = supabase
     .from("issues")
     .select(
-      "id, issue_number, title, status_id, priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name)",
+      "id, issue_number, title, status_id, sprint_id, priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(name)",
       { count: "exact" },
     )
     .eq("project_id", projectId)
@@ -798,28 +804,46 @@ export async function listBoard(
   if (assignee === "me") request = request.eq("assignee_id", userId)
   if (assignee === "unassigned") request = request.is("assignee_id", null)
 
-  const { data, error, count } = await request
-  if (error) throw new DatabaseError("Could not load the board.")
+  const [issues, openSprints] = await Promise.all([
+    request,
+    supabase
+      .from("sprints")
+      .select("id, name")
+      .eq("project_id", projectId)
+      .neq("status", "completed")
+      .order("name"),
+  ])
 
-  const cards: BoardCard[] = (data ?? []).map((issue) => ({
-    id: issue.id,
-    number: issue.issue_number,
-    title: issue.title,
-    priority: one(issue.priorities as NamedEmbed)?.name ?? "Unknown",
-    assigneeName: one(issue.assignee as NameEmbed)?.display_name ?? null,
-    statusId: issue.status_id,
-  }))
+  if (issues.error || issues.data === null || issues.count === null || openSprints.error || openSprints.data === null) {
+    throw new DatabaseError("Could not load the board.")
+  }
+
+  const cards: BoardCard[] = issues.data.map((issue) => {
+    const sprint = one(issue.sprint as { name: string } | { name: string }[] | null)
+    return {
+      id: issue.id,
+      number: issue.issue_number,
+      title: issue.title,
+      priority: one(issue.priorities as NamedEmbed)?.name ?? "Unknown",
+      assigneeName: one(issue.assignee as NameEmbed)?.display_name ?? null,
+      statusId: issue.status_id,
+      sprintId: issue.sprint_id,
+      sprintName: sprint?.name ?? null,
+    }
+  })
 
   return {
     projectId: project.id,
     projectName: project.name,
     projectKey: project.key,
     archived: Boolean(project.archived_at),
-    total: count ?? cards.length,
+    total: issues.count,
     shown: cards.length,
+    sprints: openSprints.data,
     columns: catalog.statuses.map((status) => ({
       id: status.id,
       name: status.name,
+      category: status.category,
       issues: cards.filter((card) => card.statusId === status.id),
     })),
   }

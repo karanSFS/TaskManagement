@@ -14,9 +14,11 @@ export const metadata = { title: "Reports" }
 
 const fieldClass = filterFieldClass
 
-export default function ReportsPage({ searchParams }: { searchParams: Promise<{ projectId?: string }> }) {
+type ReportSearch = { projectId?: string; from?: string; to?: string }
+
+export default function ReportsPage({ searchParams }: { searchParams: Promise<ReportSearch> }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <PageHeader title="Reports" description="Project, sprint, and issue totals from the database." />
       <Suspense fallback={<Skeleton className="h-64 w-full" />}>
         <ReportContent searchParams={searchParams} />
@@ -25,18 +27,26 @@ export default function ReportsPage({ searchParams }: { searchParams: Promise<{ 
   )
 }
 
-async function ReportContent({ searchParams }: { searchParams: Promise<{ projectId?: string }> }) {
+async function ReportContent({ searchParams }: { searchParams: Promise<ReportSearch> }) {
   const [params, user] = await Promise.all([searchParams, getCurrentUser()])
   if (!user) return null
 
   const projects = await listIssueProjects(user.id)
   const projectId = projects.some((project) => project.id === params.projectId) ? params.projectId : undefined
-  const report = await getReports(user.id, projectId)
+  let from = isoDate(params.from)
+  let to = isoDate(params.to)
+  if (from && to && from > to) {
+    const swap = from
+    from = to
+    to = swap
+  }
+  const report = await getReports(user.id, projectId, { from, to })
+  const filtered = Boolean(projectId || from || to)
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <FilterDrawer action="/reports" title="Filter reports" activeCount={projectId ? 1 : 0}>
+        <FilterDrawer action="/reports" title="Filter reports" activeCount={[projectId, from, to].filter(Boolean).length}>
           <FilterField label="Project">
             <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass}>
               <option value="">All projects</option>
@@ -45,8 +55,14 @@ async function ReportContent({ searchParams }: { searchParams: Promise<{ project
               ))}
             </select>
           </FilterField>
+          <FilterField label="Created from">
+            <input name="from" type="date" defaultValue={from ?? ""} className={fieldClass} />
+          </FilterField>
+          <FilterField label="Created through">
+            <input name="to" type="date" defaultValue={to ?? ""} className={fieldClass} />
+          </FilterField>
         </FilterDrawer>
-        {projectId ? (
+        {filtered ? (
           <Button asChild variant="ghost" size="sm">
             <Link href="/reports">Clear</Link>
           </Button>
@@ -58,7 +74,17 @@ async function ReportContent({ searchParams }: { searchParams: Promise<{ project
         statuses={report.statuses}
         priorities={report.priorities}
         types={report.types}
+        summary={report.summary}
+        ranged={report.ranged}
       />
     </div>
   )
+}
+
+function isoDate(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined
+  const [year, month, day] = value.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined
+  return value
 }

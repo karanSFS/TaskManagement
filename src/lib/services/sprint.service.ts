@@ -3,7 +3,7 @@ import { AuthorizationError } from "@/lib/errors/authorization-error"
 import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
 import { createClient } from "@/lib/supabase/server"
-import type { CreateSprintValues } from "@/lib/validations/sprint"
+import type { CreateSprintValues, UpdateSprintValues } from "@/lib/validations/sprint"
 
 const issueLimit = 200
 
@@ -13,6 +13,11 @@ export type SprintIssue = {
   title: string
   status: string
   done: boolean
+  priority: string
+  priorityRank: number
+  assigneeName: string | null
+  updatedAt: string
+  sprintId: string | null
 }
 
 export type SprintSummary = {
@@ -36,6 +41,11 @@ export type SprintWorkspace = {
 }
 
 type StatusEmbed = { name: string; category: string } | { name: string; category: string }[] | null
+type PriorityEmbed = { name: string; rank: number } | { name: string; rank: number }[] | null
+type AssigneeEmbed = { display_name: string } | { display_name: string }[] | null
+
+const sprintIssueSelect =
+  "id, issue_number, title, updated_at, sprint_id, issue_statuses!issues_status_id_fkey(name, category), priorities!issues_priority_id_fkey(name, rank), assignee:profiles!issues_assignee_id_fkey(display_name)"
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null
@@ -92,26 +102,32 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
       .order("created_at", { ascending: false }),
     supabase
       .from("issues")
-      .select("id, issue_number, title, sprint_id, issue_statuses!issues_status_id_fkey(name, category)")
+      .select(sprintIssueSelect)
       .eq("project_id", projectId)
       .not("sprint_id", "is", null)
       .order("updated_at", { ascending: false })
       .limit(issueLimit),
     supabase
       .from("issues")
-      .select("id, issue_number, title, issue_statuses!issues_status_id_fkey!inner(name, category)")
+      .select(sprintIssueSelect)
       .eq("project_id", projectId)
       .is("sprint_id", null)
-      .neq("issue_statuses.category", "done")
       .order("updated_at", { ascending: false })
       .limit(issueLimit),
   ])
 
-  if (sprints.error || scheduled.error || backlog.error) {
+  if (
+    sprints.error ||
+    sprints.data === null ||
+    scheduled.error ||
+    scheduled.data === null ||
+    backlog.error ||
+    backlog.data === null
+  ) {
     throw new DatabaseError("Could not load sprints.")
   }
 
-  const scheduledIssues = (scheduled.data ?? []).map(toSprintIssue)
+  const scheduledIssues = scheduled.data.map(toSprintIssue)
   const rank = { active: 0, future: 1, completed: 2 }
 
   return {
@@ -119,9 +135,9 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
     projectName: project.name,
     projectKey: project.key,
     archived: Boolean(project.archived_at),
-    truncated: (scheduled.data ?? []).length >= issueLimit || (backlog.data ?? []).length >= issueLimit,
-    backlog: (backlog.data ?? []).map((issue) => toSprintIssue({ ...issue, sprint_id: null })),
-    sprints: (sprints.data ?? [])
+    truncated: scheduled.data.length >= issueLimit || backlog.data.length >= issueLimit,
+    backlog: backlog.data.map((issue) => toSprintIssue(issue)),
+    sprints: sprints.data
       .map((sprint) => ({
         id: sprint.id,
         name: sprint.name,
@@ -139,16 +155,24 @@ function toSprintIssue(issue: {
   id: string
   issue_number: number
   title: string
+  updated_at: string
   sprint_id?: string | null
   issue_statuses: StatusEmbed
-}) {
+  priorities: PriorityEmbed
+  assignee: AssigneeEmbed
+}): SprintIssue {
   const status = one(issue.issue_statuses)
+  const priority = one(issue.priorities)
   return {
     id: issue.id,
     number: issue.issue_number,
     title: issue.title,
     status: status?.name ?? "Unknown",
     done: status?.category === "done",
+    priority: priority?.name ?? "Unknown",
+    priorityRank: priority?.rank ?? 0,
+    assigneeName: one(issue.assignee)?.display_name ?? null,
+    updatedAt: issue.updated_at,
     sprintId: issue.sprint_id ?? null,
   }
 }
@@ -172,6 +196,39 @@ export async function createSprintRecord(userId: string, input: CreateSprintValu
   if (error) raiseSprintError(error.message)
   if (!data) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have access to that project.")
   return data
+}
+
+export async function updateSprintRecord(userId: string, input: UpdateSprintValues) {
+  void userId
+  const supabase = await createClient()
+  const { data: existing, error: readError } = await supabase
+    .from("sprints")
+    .select("id, project_id, status")
+    .eq("id", input.sprintId)
+    .maybeSingle()
+
+  if (readError) throw new DatabaseError("Could not load the sprint.")
+  if (!existing) throw new NotFoundError("SPRINT_NOT_FOUND", "Sprint could not be found.")
+  if (existing.status === "completed") {
+    throw new AppError("INVALID_SPRINT", "Completed sprints stay as a record. Plan a new sprint for new work.", 422)
+  }
+
+  const { data, error } = await supabase
+    .from("sprints")
+    .update({
+      name: input.name,
+      goal: input.goal,
+      start_date: input.startDate || null,
+      end_date: input.endDate || null,
+    })
+    .eq("id", input.sprintId)
+    .select("id, project_id")
+
+  if (error) raiseSprintError(error.message)
+  if (!data?.length || !data[0]) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have permission to change this sprint.")
+  }
+  return data[0]
 }
 
 export async function startSprintRecord(userId: string, sprintId: string) {

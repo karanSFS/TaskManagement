@@ -11,8 +11,9 @@ import {
   createSprintRecord,
   moveIssueToSprint,
   startSprintRecord,
+  updateSprintRecord,
 } from "@/lib/services/sprint.service"
-import { createSprintSchema, moveIssueSchema } from "@/lib/validations/sprint"
+import { createSprintSchema, moveIssueSchema, updateSprintSchema } from "@/lib/validations/sprint"
 
 function refreshSprint(projectId: string) {
   revalidatePath("/backlog")
@@ -21,6 +22,7 @@ function refreshSprint(projectId: string) {
   revalidatePath("/issues")
   revalidatePath("/my-work")
   revalidatePath("/dashboard")
+  revalidatePath("/reports")
   revalidatePath(`/projects/${projectId}`)
 }
 
@@ -42,6 +44,22 @@ export async function createSprint(values: unknown): Promise<ActionState> {
     return { success: "Sprint planned." }
   } catch (error) {
     return failure(error, "createSprint", user.id, parsed.data.projectId)
+  }
+}
+
+export async function updateSprint(values: unknown): Promise<ActionState> {
+  const parsed = updateSprintSchema.safeParse(values)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the sprint name and dates." }
+
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to edit a sprint." }
+
+  try {
+    const updated = await updateSprintRecord(user.id, parsed.data)
+    refreshSprint(updated.project_id)
+    return { success: "Sprint updated." }
+  } catch (error) {
+    return failure(error, "updateSprint", user.id, parsed.data.sprintId)
   }
 }
 

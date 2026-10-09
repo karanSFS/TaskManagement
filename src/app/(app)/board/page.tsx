@@ -19,7 +19,7 @@ const fieldClass = filterFieldClass
 
 export default function BoardPage({ searchParams }: { searchParams: Promise<BoardSearch> }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <PageHeader title="Board" description="Move an issue into another column to change its status." />
       <Suspense fallback={<Skeleton className="h-64 w-full" />}>
         <BoardContent searchParams={searchParams} />
@@ -51,7 +51,9 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
     return <p className="text-sm text-muted-foreground">That project could not be loaded.</p>
   }
 
-  const signature = board.columns.map((column) => `${column.id}:${column.issues.map((issue) => issue.id).join(",")}`).join("|")
+  const signature = board.columns
+    .map((column) => `${column.id}:${column.issues.map((issue) => `${issue.id}:${issue.sprintId ?? ""}`).join(",")}`)
+    .join("|")
 
   return (
     <div className="grid gap-3">
@@ -91,7 +93,13 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
           Showing the latest {board.shown} of {board.total} issues.
         </p>
       ) : null}
-      <IssueBoard key={signature} columns={board.columns} projectKey={board.projectKey} />
+      <IssueBoard
+        key={signature}
+        columns={board.columns}
+        projectKey={board.projectKey}
+        projectId={board.projectId}
+        sprints={board.sprints}
+      />
     </div>
   )
 }

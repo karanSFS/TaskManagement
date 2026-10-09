@@ -16,8 +16,9 @@ export function AppearanceSettings() {
   return (
     <section className="grid max-w-lg gap-3 rounded-lg border bg-card p-4">
       <div>
+        <p className="text-xs font-medium text-muted-foreground">This device</p>
         <h2 className="text-sm font-medium">Appearance</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Saved on this device. It stays after you reload.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Saved in this browser. It is not a project setting, and it stays after you reload.</p>
       </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Theme">
         {choices.map((choice) => (

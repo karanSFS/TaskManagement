@@ -8,8 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { markAllRead, markRead } from "@/lib/actions/notifications"
-import { notificationHref, notificationLabel } from "@/lib/notifications/format"
-import { formatProjectDate } from "@/lib/projects/format"
+import { formatNotificationTime, notificationHref, notificationLabel } from "@/lib/notifications/format"
 import { createClient } from "@/lib/supabase/client"
 import type { NotificationItem } from "@/lib/services/notification.service"
 
@@ -78,6 +77,7 @@ export function NotificationBell({
                 startTransition(async () => {
                   const result = await markAllRead()
                   if (result.error) toast.error(result.error)
+                  else toast.success(result.success ?? "Notifications marked read.")
                 })
               }}
             >
@@ -102,7 +102,7 @@ export function NotificationBell({
                     <span className="truncate text-muted-foreground">{notificationLabel(item.kind)}</span>
                   </span>
                   <span className="truncate text-sm">{item.issueTitle ?? item.projectName ?? item.body}</span>
-                  <span className="text-[11px] text-muted-foreground">{formatProjectDate(item.createdAt)}</span>
+                  <span className="text-[11px] text-muted-foreground">{formatNotificationTime(item.createdAt)}</span>
                 </button>
               </li>
             ))}

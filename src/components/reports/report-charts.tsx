@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
-import type { ReportBar, ReportCount } from "@/lib/services/report.service"
+import type { ReportBar, ReportCount, ReportSummary } from "@/lib/services/report.service"
 
 const tooltipStyle = {
   background: "var(--popover)",
@@ -19,42 +19,79 @@ export function ReportCharts({
   statuses,
   priorities,
   types,
+  summary,
+  ranged,
 }: {
   projects: ReportBar[]
   sprints: (ReportBar & { status: string })[]
   statuses: ReportCount[]
   priorities: ReportCount[]
   types: ReportCount[]
+  summary: ReportSummary
+  ranged: boolean
 }) {
   return (
-    <div className="grid gap-4">
-      <ChartCard title="Projects" description="Open and done issues in each active project.">
+    <div className="grid min-w-0 gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <Kpi label="Issues" value={String(summary.issues)} hint={ranged ? "Created in this range" : "Issues you can access"} />
+        <Kpi label="Open" value={String(summary.open)} hint="Not done" />
+        <Kpi label="Done" value={String(summary.done)} hint="Status category is done" />
+        <Kpi
+          label="Completion"
+          value={summary.completion === null ? "—" : `${summary.completion}%`}
+          hint={summary.completion === null ? "No issues in this view" : "Done divided by issues"}
+        />
+        <Kpi label="Active projects" value={String(summary.activeProjects)} hint="Not archived" />
+        <Kpi label="Active sprints" value={String(summary.activeSprints)} hint="Running now, across the selected projects" />
+      </div>
+      <ChartCard title="Projects" description={ranged ? "Issues created in this range, by project." : "Open and done issues in each active project."}>
         <SplitChart rows={projects} empty="No active projects yet." quiet="No issues in these projects yet." />
       </ChartCard>
-      <ChartCard title="Sprints" description="The latest 12 sprints.">
-        <SplitChart rows={sprints} empty="No sprints yet." quiet="These sprints have no issues yet." />
-        {sprints.length > 0 ? (
-          <ul className="grid gap-1 text-xs text-muted-foreground">
-            {sprints.map((sprint) => (
-              <li key={`${sprint.name}-${sprint.status}`}>
-                {sprint.name} · {sprintStatus(sprint.status)} · {sprint.done} done, {sprint.open} open
-              </li>
-            ))}
+      <ChartCard title="Sprint progress" description={ranged ? "Sprints that contain issues created in this range." : "The latest 12 sprints."}>
+        {sprints.length === 0 ? <p className="text-sm text-muted-foreground">No sprints yet.</p> : (
+          <ul className="grid gap-3">
+            {sprints.map((sprint) => {
+              const total = sprint.open + sprint.done
+              const percent = total === 0 ? 0 : Math.round((sprint.done / total) * 100)
+              return (
+                <li key={`${sprint.name}-${sprint.status}`} className="grid gap-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate font-medium">{sprint.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {sprintStatus(sprint.status)} · {sprint.done} done, {sprint.open} open
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                    <div className="h-full bg-chart-2" style={{ width: `${percent}%` }} />
+                  </div>
+                </li>
+              )
+            })}
           </ul>
-        ) : null}
+        )}
       </ChartCard>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <ChartCard title="Status" description="Issues by status.">
-          <CountChart rows={statuses} empty="No issues yet." />
+          <CountChart rows={statuses} empty="No issues yet." color="var(--chart-1)" />
         </ChartCard>
         <ChartCard title="Priority" description="Issues by priority.">
-          <CountChart rows={priorities} empty="No issues yet." />
+          <CountChart rows={priorities} empty="No issues yet." color="var(--chart-4)" />
         </ChartCard>
         <ChartCard title="Type" description="Issues by type.">
-          <CountChart rows={types} empty="No issues yet." />
+          <CountChart rows={types} empty="No issues yet." color="var(--chart-3)" />
         </ChartCard>
       </div>
     </div>
+  )
+}
+
+function Kpi({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <section className="grid gap-1 rounded-lg border bg-card px-3 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+    </section>
   )
 }
 
@@ -63,54 +100,56 @@ function SplitChart({ rows, empty, quiet }: { rows: ReportBar[]; empty: string; 
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>
   if (total === 0) return <p className="text-sm text-muted-foreground">{quiet}</p>
   return (
-    <div className="h-56 overflow-x-auto">
-      <div className="h-full min-w-80">
+    <div className="grid min-w-0 gap-2">
+      <Legend items={[{ name: "Open", color: "var(--chart-1)" }, { name: "Done", color: "var(--chart-2)" }]} />
+      <div className="min-w-0" style={{ height: Math.max(160, rows.length * 48) }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows.map((row) => ({ ...row, label: short(row.name) }))} margin={{ left: 0, right: 8, top: 8 }}>
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
-            <YAxis allowDecimals={false} width={28} tick={{ fontSize: 11 }} />
+          <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+            <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+            <YAxis type="category" dataKey="name" width={108} tick={{ fontSize: 11 }} tickFormatter={short} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="open" name="Open" fill="var(--chart-1)" radius={3} />
-            <Bar dataKey="done" name="Done" fill="var(--chart-2)" radius={3} />
+            <Bar dataKey="open" name="Open" fill="var(--chart-1)" radius={3} barSize={10} />
+            <Bar dataKey="done" name="Done" fill="var(--chart-2)" radius={3} barSize={10} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <ul className="sr-only">
-        {rows.map((row) => (
-          <li key={row.name}>{row.name}: {row.open} open, {row.done} done</li>
-        ))}
-      </ul>
     </div>
   )
 }
 
-function CountChart({ rows, empty }: { rows: ReportCount[]; empty: string }) {
+function CountChart({ rows, empty, color }: { rows: ReportCount[]; empty: string; color: string }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0)
   if (total === 0) return <p className="text-sm text-muted-foreground">{empty}</p>
   return (
-    <div className="h-52 overflow-x-auto">
-      <div className="h-full min-w-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows.map((row) => ({ ...row, label: short(row.name) }))} margin={{ left: 0, right: 8, top: 8 }}>
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
-            <YAxis allowDecimals={false} width={28} tick={{ fontSize: 11 }} />
-            <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="count" name="Issues" fill="var(--chart-1)" radius={3} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="sr-only">
-        {rows.map((row) => (
-          <li key={row.name}>{row.name}: {row.count}</li>
-        ))}
-      </ul>
+    <div className="min-w-0" style={{ height: Math.max(180, rows.length * 32) }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 12, top: 4, bottom: 4 }}>
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+          <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} tickFormatter={short} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Bar dataKey="count" name="Issues" fill={color} radius={3} barSize={12} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
+  )
+}
+
+function Legend({ items }: { items: { name: string; color: string }[] }) {
+  return (
+    <ul className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+      {items.map((item) => (
+        <li key={item.name} className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-sm" style={{ background: item.color }} />
+          {item.name}
+        </li>
+      ))}
+    </ul>
   )
 }
 
 function ChartCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
-    <section className="grid gap-2 rounded-lg border bg-card px-3 py-3">
+    <section className="grid min-w-0 gap-3 rounded-lg border bg-card px-3 py-3">
       <div>
         <h2 className="text-sm font-medium">{title}</h2>
         <p className="text-xs text-muted-foreground">{description}</p>

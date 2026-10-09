@@ -19,7 +19,7 @@ const fieldClass = filterFieldClass
 
 export default function SprintsPage({ searchParams }: { searchParams: Promise<{ projectId?: string }> }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <PageHeader title="Sprints" description="Plan a sprint, start one, and complete it when the work is done." />
       <Suspense fallback={<Skeleton className="h-40 w-full" />}>
         <SprintsContent searchParams={searchParams} />
@@ -58,14 +58,18 @@ async function SprintsContent({ searchParams }: { searchParams: Promise<{ projec
         <Button asChild size="sm" variant="ghost">
           <Link href={`/backlog?projectId=${workspace.projectId}`}>Backlog</Link>
         </Button>
+        {workspace.archived ? (
+          <p className="text-sm text-muted-foreground">This project is archived. You can still close the active sprint.</p>
+        ) : (
+          <PlanSprintButton key={workspace.projectId} projectId={workspace.projectId} />
+        )}
       </div>
-      {workspace.archived ? (
-        <p className="text-sm text-muted-foreground">This project is archived. You can still close the active sprint.</p>
+      {workspace.truncated ? <p className="text-xs text-muted-foreground">Showing the latest 200 issues in each list.</p> : null}
+      {workspace.sprints.length === 0 ? (
+        <EmptyState icon={CalendarRange} title="No sprints yet" description="Plan one to start scheduling work. Only one sprint can be active." />
       ) : (
-        <PlanSprintButton key={workspace.projectId} projectId={workspace.projectId} />
+        <SprintList projectId={workspace.projectId} projectKey={workspace.projectKey} sprints={workspace.sprints} />
       )}
-      {workspace.truncated ? <p className="text-xs text-muted-foreground">Showing the latest 200 issues.</p> : null}
-      <SprintList projectId={workspace.projectId} projectKey={workspace.projectKey} sprints={workspace.sprints} />
     </div>
   )
 }
