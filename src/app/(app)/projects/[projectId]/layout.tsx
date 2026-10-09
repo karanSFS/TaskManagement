@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from "react"
 
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { ProjectNav } from "@/components/projects/project-nav"
+import { projectAccent } from "@/components/shared/priority-mark"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -39,13 +40,20 @@ async function ProjectFrame({
     notFound()
   }
 
+  const accent = projectAccent(project.key)
+
   return (
     <div className="grid gap-4">
-      <div className="flex items-center gap-2">
-        <ProjectIcon name={project.icon} />
-        <h1 className="truncate text-lg font-semibold tracking-tight">{project.name}</h1>
-        <Badge variant="outline">{project.key}</Badge>
-        {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : null}
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className={`h-1 ${accent.bar}`} />
+        <div className="flex items-center gap-3 px-3 py-3">
+          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
+            <ProjectIcon name={project.icon} />
+          </span>
+          <h1 className="truncate text-xl font-semibold tracking-tight">{project.name}</h1>
+          <Badge variant="outline">{project.key}</Badge>
+          {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+        </div>
       </div>
       <ProjectNav projectId={project.id} />
       {children}

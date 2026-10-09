@@ -96,6 +96,7 @@ async function BacklogContent({ searchParams }: { searchParams: Promise<BacklogS
         <Button asChild size="sm" variant="ghost">
           <Link href={`/sprints?projectId=${workspace.projectId}`}>Sprints</Link>
         </Button>
+        <p className="text-sm font-medium">{workspace.projectName} <span className="font-mono text-xs font-normal text-muted-foreground">{workspace.projectKey}</span></p>
         <p className="text-xs text-muted-foreground">{openCount} open · {doneCount} done</p>
       </div>
       {workspace.truncated ? (

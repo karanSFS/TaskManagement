@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { ReportCharts } from "@/components/reports/report-charts"
 import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { DetailSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { listIssueProjects } from "@/lib/services/issue.service"
 import { getReports } from "@/lib/services/report.service"
@@ -20,7 +20,7 @@ export default function ReportsPage({ searchParams }: { searchParams: Promise<Re
   return (
     <div className="grid min-w-0 gap-4">
       <PageHeader title="Reports" description="Project, sprint, and issue totals from the database." />
-      <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <Suspense fallback={<DetailSkeleton />}>
         <ReportContent searchParams={searchParams} />
       </Suspense>
     </div>

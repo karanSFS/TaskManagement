@@ -7,8 +7,9 @@ import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { EditProjectButton } from "@/components/projects/create-project-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
+import { DetailSkeleton } from "@/components/shared/page-skeleton"
 import { LinkPending } from "@/components/shared/pending-ui"
-import { Skeleton } from "@/components/ui/skeleton"
+import { MetricLink, ProgressMeter, StatusChip } from "@/components/shared/visual"
 import { isProjectIcon } from "@/lib/projects/icons"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate, issueKey, roleLabel } from "@/lib/projects/format"
@@ -18,7 +19,7 @@ export const metadata = { title: "Project" }
 
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   return (
-    <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <ProjectOverview params={params} />
     </Suspense>
   )
@@ -57,16 +58,15 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
           />
         ) : null}
       </div>
-      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Open issues" value={String(project.openIssueCount)} />
-        <Stat label="Done" value={String(project.doneIssueCount)} />
-        <Stat label="Members" value={String(project.memberCount)} />
-        <Stat label="Your role" value={roleLabel(project.role)} />
-      </dl>
-      <dl className="grid gap-2 sm:grid-cols-2">
-        <Stat label="Lead" value={project.leadName} />
-        <Stat label="Created" value={formatProjectDate(project.createdAt)} />
-      </dl>
+      <div className="rounded-xl border bg-card px-3 py-3 shadow-sm">
+        <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <MetricLink label="Open issues" value={project.openIssueCount} hint="Not done in this project" tone="bg-info" href={`/issues?projectId=${project.id}`} />
+        <MetricLink label="Done" value={project.doneIssueCount} hint="Completed in this project" tone="bg-success" />
+        <MetricLink label="Members" value={project.memberCount} hint={`${roleLabel(project.role)} · lead ${project.leadName}`} tone="bg-primary" href={`/projects/${project.id}/members`} />
+      </div>
+      <p className="text-xs text-muted-foreground">Created {formatProjectDate(project.createdAt)} · next number {issueKey(project.key, project.nextIssueNumber)}</p>
       <section className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">Recent issues</h2>
@@ -106,16 +106,17 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
           />
         ) : null}
         {project.issues.length > 0 ? (
-          <ul className="divide-y rounded-lg border bg-card">
+          <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
             {project.issues.map((issue) => (
               <li key={issue.id}>
-                <div className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50">
-                  <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:underline">
+                <div className="flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-muted/40">
+                  <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:underline">
                     <LinkPending />
                     {issueKey(project.key, issue.number)}
                   </Link>
-                  <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left">{issue.title}</IssueOpenButton>
-                  <span className="text-xs text-muted-foreground">{issue.status}</span>
+                  <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left font-medium">{issue.title}</IssueOpenButton>
+                  <StatusChip name={issue.status} category={issue.category} />
+                  <span className="hidden text-xs text-muted-foreground sm:inline">{formatProjectDate(issue.updatedAt)}</span>
                 </div>
               </li>
             ))}
@@ -126,11 +127,3 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-sm font-medium">{value}</dd>
-    </div>
-  )
-}

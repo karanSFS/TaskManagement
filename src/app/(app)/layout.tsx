@@ -5,6 +5,7 @@ import { Suspense, type ReactNode } from "react"
 import { IssueDrawerProvider } from "@/components/issues/issue-drawer"
 import { AppChrome } from "@/components/layout/app-chrome"
 import { AppSidebar } from "@/components/layout/app-sidebar"
+import { Logo } from "@/components/brand/logo"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -51,7 +52,10 @@ async function AuthenticatedShell({ children }: { children: ReactNode }) {
 function ShellFallback() {
   return (
     <div className="flex min-h-svh bg-background">
-      <div className="hidden w-64 border-r bg-sidebar md:block" />
+      <div className="hidden w-64 border-r bg-sidebar px-3 py-3 md:block">
+        <Logo />
+        <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">Plan together. Solve faster.</p>
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex h-12 items-center gap-2 border-b px-3">
           <Skeleton className="size-8" />

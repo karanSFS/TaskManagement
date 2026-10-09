@@ -25,10 +25,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-3 py-3">
+      <SidebarHeader className="gap-1 px-3 py-3">
         <Link href="/dashboard" className="flex items-center" aria-label="FixTask home">
           <Logo />
         </Link>
+        <p className="truncate px-0.5 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Plan together. Solve faster.
+        </p>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -57,7 +60,12 @@ function NavList({
     <SidebarMenu>
       {items.map((item) => (
         <SidebarMenuItem key={item.href}>
-          <SidebarMenuButton asChild isActive={isNavActive(pathname, item.href)} tooltip={item.title}>
+          <SidebarMenuButton
+            asChild
+            isActive={isNavActive(pathname, item.href)}
+            tooltip={item.description}
+            className="data-active:shadow-[inset_3px_0_0_0_var(--primary)]"
+          >
             <Link href={item.href} className="flex items-center gap-2">
               <item.icon />
               <span>{item.title}</span>

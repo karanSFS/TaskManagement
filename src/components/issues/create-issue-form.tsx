@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 
 import { FormSheet } from "@/components/shared/form-dialog"
+import { PriorityMark } from "@/components/shared/priority-mark"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -221,7 +222,10 @@ function Choice({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel className="flex items-center gap-2">
+            {label}
+            {name === "priorityId" ? <PriorityMark name={options.find((option) => option.id === field.value)?.name ?? ""} /> : null}
+          </FormLabel>
           <FormControl>
             <select className={fieldClass} {...field}>
               {options.map((option) => (

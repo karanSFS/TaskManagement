@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
 import { MemberManager } from "@/components/projects/member-manager"
-import { Skeleton } from "@/components/ui/skeleton"
+import { DetailSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { getProject } from "@/lib/services/project.service"
 
@@ -10,7 +10,7 @@ export const metadata = { title: "Members" }
 
 export default function MembersPage({ params }: { params: Promise<{ projectId: string }> }) {
   return (
-    <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <MembersContent params={params} />
     </Suspense>
   )
@@ -31,6 +31,9 @@ async function MembersContent({ params }: { params: Promise<{ projectId: string 
 
   return (
     <div className="grid gap-3">
+      <h2 className="text-sm font-semibold tracking-tight">
+        {project.memberCount} {project.memberCount === 1 ? "member" : "members"}
+      </h2>
       <p className="text-sm text-muted-foreground">
         {canManage
           ? "Add someone who already has a FixTask account. Owners and admins can change roles and remove members."

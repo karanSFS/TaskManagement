@@ -34,6 +34,7 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxSearch> }) {
   const page = Number(params.page ?? "1")
   const result = await listNotifications(user.id, page, { unread, kind })
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize))
+  const unreadShown = unread ? result.total : result.items.filter((item) => !item.readAt).length
 
   return (
     <div className="grid gap-3">
@@ -42,7 +43,7 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxSearch> }) {
           <Link href={inboxHref(false, 1, kind)}>All</Link>
         </Button>
         <Button asChild variant={unread ? "outline" : "ghost"} size="sm">
-          <Link href={inboxHref(true, 1, kind)}>Unread</Link>
+          <Link href={inboxHref(true, 1, kind)}>Unread{unreadShown > 0 ? ` · ${unreadShown}` : ""}</Link>
         </Button>
         <FilterDrawer action="/notifications" title="Filter notifications" activeCount={kind ? 1 : 0}>
           {unread ? <input type="hidden" name="view" value="unread" /> : null}

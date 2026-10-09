@@ -14,7 +14,7 @@ export function AppearanceSettings() {
   const current = theme ?? "system"
 
   return (
-    <section className="grid max-w-lg gap-3 rounded-lg border bg-card p-4">
+    <section className="grid max-w-lg gap-3 rounded-xl border bg-card p-4 shadow-sm">
       <div>
         <p className="text-xs font-medium text-muted-foreground">This device</p>
         <h2 className="text-sm font-medium">Appearance</h2>
@@ -27,7 +27,7 @@ export function AppearanceSettings() {
             type="button"
             suppressHydrationWarning
             aria-pressed={current === choice.id}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm aria-pressed:border-primary aria-pressed:bg-primary/10"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm transition-colors duration-200 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             onClick={() => setTheme(choice.id)}
           >
             <ThemeIcon name={choice.id} />

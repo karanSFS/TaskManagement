@@ -10,17 +10,19 @@ export function CreateProjectButton({
   children = "New project",
   size,
   variant,
+  className,
   takenKeys,
 }: {
   children?: ReactNode
   size?: "sm" | "default"
   variant?: "default" | "outline"
+  className?: string
   takenKeys?: string[]
 }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <RevealButton type="button" size={size} variant={variant} onReveal={() => setOpen(true)}>
+      <RevealButton type="button" size={size} variant={variant} className={className} onReveal={() => setOpen(true)}>
         {children}
       </RevealButton>
       <ProjectForm

@@ -9,8 +9,10 @@ import { EditIssueButton } from "@/components/issues/issue-editor"
 import { LabelEditor } from "@/components/issues/label-editor"
 import { LinkSection } from "@/components/issues/link-section"
 import { SubtaskSection } from "@/components/issues/subtask-section"
+import { DetailSkeleton } from "@/components/shared/page-skeleton"
+import { PriorityMark } from "@/components/shared/priority-mark"
+import { StatusChip } from "@/components/shared/visual"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
 import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
@@ -20,7 +22,7 @@ export const metadata = { title: "Issue" }
 
 export default function IssuePage({ params }: { params: Promise<{ issueId: string }> }) {
   return (
-    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <IssueContent params={params} />
     </Suspense>
   )
@@ -41,6 +43,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   const priority = catalog.priorities.find((item) => item.id === issue.priorityId)
   const type = catalog.types.find((item) => item.id === issue.typeId)
   const assignee = issue.members.find((member) => member.id === issue.assigneeId)?.name ?? "Unassigned"
+  const today = new Date().toISOString().slice(0, 10)
+  const overdue = issue.dueDate !== null && issue.dueDate < today
 
   return (
     <div className="grid min-w-0 gap-4">
@@ -52,11 +56,11 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             </Link>
             <Badge variant="outline">{issueKey(issue.projectKey, issue.number)}</Badge>
             {type ? <Badge variant="outline">{type.name}</Badge> : null}
-            {status ? <Badge variant="secondary">{status.name}</Badge> : null}
-            {priority ? <Badge variant="outline">{priority.name}</Badge> : null}
+            {status ? <StatusChip name={status.name} category={status.category} /> : null}
+            {priority ? <PriorityMark name={priority.name} /> : null}
             {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
           </div>
-          <h1 className="mt-2 text-lg font-semibold tracking-tight">{issue.title}</h1>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight">{issue.title}</h1>
         </div>
         <div className="flex items-center gap-2">
           {issue.canEdit ? (
@@ -80,17 +84,19 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
           {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} /> : null}
         </div>
       </div>
-      <dl className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-2 rounded-xl border bg-card p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Reporter" value={issue.reporterName} hint="Created this issue" />
         <Meta label="Assignee" value={assignee} hint="Responsible for the work" />
         <Meta label="Updated" value={formatProjectDate(issue.updatedAt)} />
-        <Meta label="Due" value={issue.dueDate ? formatDueDate(issue.dueDate) : "No due date"} />
+        <Meta label="Due" value={issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "No due date"} alert={overdue} />
       </dl>
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="grid min-w-0 gap-4">
-          <section className="rounded-lg border bg-card px-3 py-3">
+          <section className="rounded-xl border bg-card px-3 py-3 shadow-sm">
             <h2 className="text-sm font-medium">Description</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{issue.description || "No description yet."}</p>
+            <p className={issue.description ? "mt-2 whitespace-pre-wrap text-sm" : "mt-2 whitespace-pre-wrap text-sm text-muted-foreground"}>
+              {issue.description || "No description yet."}
+            </p>
           </section>
           <CommentSection
             issueId={issue.id}
@@ -110,19 +116,20 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
           <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
           <AttachmentSection issueId={issue.id} projectId={issue.projectId} attachments={attachments} />
           <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} />
-          <section className="grid gap-2">
+          <section className="rounded-xl border bg-card px-3 py-3 shadow-sm">
             <h2 className="text-sm font-medium">History</h2>
-            {issue.history.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet.</p> : null}
-            <ul className="grid gap-2">
+            {issue.history.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No activity yet.</p> : null}
+            <ol className="relative mt-3 grid gap-0 border-l border-border pl-4">
               {issue.history.map((entry) => (
-                <li key={entry.id} className="min-w-0 text-sm">
-                  <p className="break-words">{entry.summary}</p>
+                <li key={entry.id} className="relative pb-4 last:pb-0">
+                  <span className="absolute top-1.5 -left-[1.2rem] size-2 rounded-full bg-primary ring-4 ring-card" />
+                  <p className="break-words text-sm">{entry.summary}</p>
                   <p className="text-xs text-muted-foreground">
                     {entry.actorName} · {formatProjectDate(entry.createdAt)}
                   </p>
                 </li>
               ))}
-            </ul>
+            </ol>
           </section>
         </aside>
       </div>
@@ -130,11 +137,11 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   )
 }
 
-function Meta({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Meta({ label, value, hint, alert = false }: { label: string; value: string; hint?: string; alert?: boolean }) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+      <dd className={alert ? "mt-0.5 text-sm font-medium text-destructive" : "mt-0.5 text-sm font-medium"}>{value}</dd>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )

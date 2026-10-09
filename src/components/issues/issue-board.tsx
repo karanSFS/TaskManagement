@@ -25,6 +25,7 @@ import { useOpenIssue } from "@/components/issues/issue-drawer"
 import { changeIssueStatus } from "@/lib/actions/issues"
 import { assignIssueToSprint } from "@/lib/actions/sprints"
 import { userInitials } from "@/lib/auth/user"
+import { PriorityMark } from "@/components/shared/priority-mark"
 import { issueKey } from "@/lib/projects/format"
 import type { BoardCard, BoardColumn, BoardSprint } from "@/lib/services/issue.service"
 
@@ -150,7 +151,7 @@ function Column({
       id={`board-column-${column.id}`}
       ref={setNodeRef}
       aria-label={column.name}
-      className={`flex max-h-[calc(100svh-16rem)] w-72 shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 p-2 ${isOver ? "border-ring bg-muted/60" : ""}`}
+      className={`flex max-h-[calc(100svh-16rem)] w-72 shrink-0 flex-col gap-2 rounded-xl border border-t-2 bg-muted/30 p-2 shadow-sm ${columnTone(column.category)} ${isOver ? "border-ring bg-primary/5" : ""}`}
     >
       <header className="flex items-center justify-between px-1">
         <h2 className="flex items-center gap-1.5 text-sm font-medium">
@@ -160,7 +161,7 @@ function Column({
         <span className="text-xs text-muted-foreground">{column.issues.length}</span>
       </header>
       <div className="grid min-h-24 content-start gap-2 overflow-y-auto">
-        {column.issues.length === 0 ? <p className="px-1 text-xs text-muted-foreground">Nothing here.</p> : null}
+        {column.issues.length === 0 ? <p className="rounded-lg border border-dashed px-2 py-4 text-center text-xs text-muted-foreground">Nothing here.</p> : null}
         {column.issues.map((card) => (
           <Card key={card.id} card={card} projectKey={projectKey} sprints={sprints} pending={pending} onSprint={onSprint} />
         ))}
@@ -248,7 +249,7 @@ function CardView({
             <Assignee name={card.assigneeName} />
           </div>
           <BoardTitle issueId={card.id} title={card.title} />
-          <p className="mt-1 text-xs text-muted-foreground">{card.priority}</p>
+          <p className="mt-1 text-xs"><PriorityMark name={card.priority} /></p>
         </div>
       </div>
       {onSprint && !overlay ? (
@@ -323,6 +324,12 @@ function priorityClass(priority: string) {
     default:
       return "border-l-border"
   }
+}
+
+function columnTone(category: string) {
+  if (category === "done") return "border-t-success"
+  if (category === "in_progress") return "border-t-info"
+  return "border-t-primary"
 }
 
 function categoryDot(category: string) {

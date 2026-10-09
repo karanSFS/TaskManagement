@@ -18,6 +18,8 @@ import { toast } from "sonner"
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { LinkPending, RevealButton } from "@/components/shared/pending-ui"
+import { PriorityMark } from "@/components/shared/priority-mark"
+import { ProgressMeter, StatusChip, sprintTone } from "@/components/shared/visual"
 import { EditSprintButton } from "@/components/sprints/create-sprint-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -75,7 +77,7 @@ export function BacklogList({
         ) : (
           <p className="text-xs text-muted-foreground">Plan a sprint before these issues can be scheduled.</p>
         )}
-        <ul className="divide-y rounded-lg border bg-card">
+        <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
           {issues.map((issue) => (
             <BacklogRow
               key={issue.id}
@@ -97,7 +99,7 @@ function SprintDrop({ sprint }: { sprint: { id: string; name: string } }) {
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-full border px-3 py-1 text-xs ${isOver ? "border-ring bg-primary/10" : "bg-card"}`}
+      className={`rounded-full border px-3 py-1 text-xs transition-colors duration-200 ${isOver ? "border-primary bg-primary/10" : "bg-card"}`}
     >
       {sprint.name}
     </div>
@@ -160,10 +162,11 @@ export function SprintList({
   sprints: SprintSummary[]
 }) {
   const hasActive = sprints.some((sprint) => sprint.status === "active")
+  const ordered = [...sprints].sort((a, b) => sprintRank(a.status) - sprintRank(b.status))
 
   return (
     <div className="grid gap-4">
-      {sprints.map((sprint) => (
+      {ordered.map((sprint) => (
         <SprintCard key={sprint.id} projectId={projectId} projectKey={projectKey} sprint={sprint} hasActive={hasActive} />
       ))}
     </div>
@@ -185,7 +188,6 @@ function SprintCard({
   const [pending, startTransition] = useTransition()
   const done = sprint.issues.filter((issue) => issue.done).length
   const total = sprint.issues.length
-  const percent = total === 0 ? 0 : Math.round((done / total) * 100)
   const dates = formatSprintDates(sprint.startDate, sprint.endDate)
 
   function returnToBacklog(issueId: string) {
@@ -201,7 +203,7 @@ function SprintCard({
   }
 
   return (
-    <section className="grid gap-3 rounded-lg border bg-card p-4">
+    <section className={`grid gap-3 overflow-hidden rounded-xl border border-t-2 bg-card p-4 shadow-sm ${sprintTone(sprint.status)}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -243,16 +245,8 @@ function SprintCard({
           {sprint.status === "active" ? <CompleteSprintButton projectId={projectId} sprintId={sprint.id} /> : null}
         </div>
       </div>
-      {sprint.goal ? <p className="text-sm text-muted-foreground">{sprint.goal}</p> : <p className="text-sm text-muted-foreground">No goal yet.</p>}
-      <div className="grid gap-1">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{done} of {total} done</span>
-          <span>{total === 0 ? "No issues" : `${percent}%`}</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-          <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
-        </div>
-      </div>
+      {sprint.goal ? <p className="text-sm">{sprint.goal}</p> : <p className="text-sm text-muted-foreground">No goal yet.</p>}
+      <ProgressMeter done={done} open={total - done} barClass={sprint.status === "completed" ? "bg-chart-2" : "bg-primary"} />
       {total > 0 ? (
         <ul className="divide-y rounded-lg border">
           {sprint.issues.map((issue) => (
@@ -283,11 +277,17 @@ function IssueLine({ projectKey, issue }: { projectKey: string; issue: SprintIss
       <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
         {issue.title}
       </IssueOpenButton>
-      <span className="text-xs text-muted-foreground">{issue.status}</span>
-      <span className="text-xs text-muted-foreground">{issue.priority}</span>
+      <StatusChip name={issue.status} done={issue.done} />
+      <PriorityMark name={issue.priority} />
       <span className="text-xs text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</span>
     </div>
   )
+}
+
+function sprintRank(status: string) {
+  if (status === "active") return 0
+  if (status === "future") return 1
+  return 2
 }
 
 function CompleteSprintButton({ projectId, sprintId }: { projectId: string; sprintId: string }) {

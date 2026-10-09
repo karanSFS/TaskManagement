@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { addProjectMember, removeProjectMember, updateMemberRole } from "@/lib/actions/projects"
+import { userInitials } from "@/lib/auth/user"
 import { roleLabel } from "@/lib/projects/format"
 import { addMemberSchema, projectRoles, type AddMemberValues, type ProjectRole } from "@/lib/validations/project"
 
@@ -44,7 +45,7 @@ export function MemberManager({
   return (
     <div className="grid gap-4">
       {canManage ? <AddMemberForm projectId={projectId} roles={roles} /> : null}
-      <ul className="divide-y rounded-lg border bg-card">
+      <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
         {members.map((member) => (
           <MemberItem
             key={member.id}
@@ -169,13 +170,17 @@ function MemberItem({
   const canRemove = !isLastOwner && (canManage || member.isYou)
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-3 py-2">
+    <li className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+        {userInitials(member.name)}
+      </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {member.name}
           {member.isYou ? <span className="ml-2 text-xs font-normal text-muted-foreground">You</span> : null}
         </p>
       </div>
+      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{roleLabel(member.role)}</span>
       {canManage ? (
         <select
           className={`${fieldClass} w-28`}

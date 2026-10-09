@@ -61,7 +61,7 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
       ) : (
         <ul className="grid gap-2">
           {items.map((item) => (
-            <li key={item.id} className={`rounded-lg border bg-card ${item.readAt ? "" : "border-l-2 border-l-primary"}`}>
+            <li key={item.id} className={`rounded-xl border bg-card shadow-sm ${item.readAt ? "" : "border-l-2 border-l-primary"}`}>
               <div className="flex items-start gap-3 px-3 py-3">
                 <span className="mt-0.5 text-muted-foreground">{kindIcon(item.kind)}</span>
                 <button
@@ -75,11 +75,11 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     {item.readAt ? null : <span className="size-1.5 rounded-full bg-primary" />}
                     <span className="font-medium text-foreground">{item.actorName}</span>
-                    <span>{notificationLabel(item.kind)}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{notificationLabel(item.kind)}</span>
                     <time dateTime={item.createdAt}>{formatNotificationTime(item.createdAt)}</time>
                   </span>
-                  <span className="text-sm">
-                    {item.issueKey ? <span className="mr-2 text-muted-foreground">{item.issueKey}</span> : null}
+                  <span className={item.readAt ? "text-sm" : "text-sm font-semibold"}>
+                    {item.issueKey ? <span className="mr-2 font-mono text-xs font-normal text-muted-foreground">{item.issueKey}</span> : null}
                     {item.issueTitle ?? item.projectName ?? "Notification"}
                   </span>
                   {item.kind === "commented" || item.kind === "mentioned" ? (

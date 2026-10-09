@@ -231,6 +231,54 @@ export async function updateSprintRecord(userId: string, input: UpdateSprintValu
   return data[0]
 }
 
+export type HomeSprint = {
+  id: string
+  name: string
+  endDate: string | null
+  projectId: string
+  projectName: string
+  projectKey: string
+  open: number
+  done: number
+}
+
+export async function listActiveSprintProgress(): Promise<HomeSprint[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("sprints")
+    .select("id, name, end_date, project_id, project:projects!sprints_project_id_fkey(name, key)")
+    .eq("status", "active")
+    .order("end_date", { ascending: true })
+    .limit(4)
+
+  if (error || data === null) throw new DatabaseError("Could not load active sprints.")
+  if (data.length === 0) return []
+
+  const issues = await supabase
+    .from("issues")
+    .select("sprint_id, issue_statuses!issues_status_id_fkey(category)")
+    .in("sprint_id", data.map((sprint) => sprint.id))
+
+  if (issues.error || issues.data === null) throw new DatabaseError("Could not load active sprints.")
+
+  return data.flatMap((sprint) => {
+    const project = one(sprint.project as { name: string; key: string } | { name: string; key: string }[] | null)
+    if (!project) return []
+    const related = issues.data.filter((issue) => issue.sprint_id === sprint.id)
+    const done = related.filter((issue) => one(issue.issue_statuses as StatusEmbed)?.category === "done").length
+    return [{
+      id: sprint.id,
+      name: sprint.name,
+      endDate: sprint.end_date,
+      projectId: sprint.project_id,
+      projectName: project.name,
+      projectKey: project.key,
+      open: related.length - done,
+      done,
+    }]
+  })
+}
+
 export async function startSprintRecord(userId: string, sprintId: string) {
   void userId
   const supabase = await createClient()

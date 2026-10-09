@@ -13,5 +13,5 @@ export function displayName(user: User) {
 export function userInitials(name: string) {
   const parts = name.split(/\s+/).filter(Boolean)
   const letters = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "")
-  return letters.join("") || "TF"
+  return letters.join("") || "FT"
 }

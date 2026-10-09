@@ -1,11 +1,13 @@
 import Link from "next/link"
 import { Suspense } from "react"
+import { FolderPlus } from "lucide-react"
 
 import { CreateIssueForm } from "@/components/issues/create-issue-form"
 import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { PageHeader } from "@/components/layout/page-header"
+import { EmptyState } from "@/components/shared/empty-state"
+import { FormSkeleton } from "@/components/shared/page-skeleton"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { getIssueCatalog, listWritableProjects } from "@/lib/services/issue.service"
 
@@ -17,7 +19,7 @@ export default function NewIssuePage({
   searchParams: Promise<{ projectId?: string }>
 }) {
   return (
-    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+    <Suspense fallback={<FormSkeleton />}>
       <NewIssueContent searchParams={searchParams} />
     </Suspense>
   )
@@ -39,14 +41,21 @@ async function NewIssueContent({ searchParams }: { searchParams: Promise<{ proje
               : "Create a project before filing the first issue."
           }
         />
-        <div className="flex gap-2">
-          <CreateProjectButton>New project</CreateProjectButton>
-          {archivedCount > 0 ? (
-            <Button asChild variant="outline" className="w-fit">
-              <Link href="/projects">View projects</Link>
-            </Button>
-          ) : null}
-        </div>
+        <EmptyState
+          icon={FolderPlus}
+          title="No project to file against"
+          description={archivedCount > 0 ? "Restore an archived project, or create a new one." : "Create a project before filing the first issue."}
+          action={
+            <div className="flex gap-2">
+              <CreateProjectButton>New project</CreateProjectButton>
+              {archivedCount > 0 ? (
+                <Button asChild variant="outline" className="w-fit">
+                  <Link href="/projects">View projects</Link>
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
       </div>
     )
   }
@@ -57,6 +66,7 @@ async function NewIssueContent({ searchParams }: { searchParams: Promise<{ proje
   return (
     <div className="grid gap-4">
       <PageHeader title="New issue" description="The project key and the next number are assigned when you save." />
+      <div className="max-w-2xl rounded-xl border bg-card p-4 shadow-sm">
       <CreateIssueForm
         projects={active}
         types={catalog.types}
@@ -64,6 +74,7 @@ async function NewIssueContent({ searchParams }: { searchParams: Promise<{ proje
         priorities={catalog.priorities}
         defaultProjectId={defaultProjectId}
       />
+      </div>
     </div>
   )
 }

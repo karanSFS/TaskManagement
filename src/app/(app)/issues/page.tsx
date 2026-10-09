@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { PriorityMark } from "@/components/shared/priority-mark"
+import { StatusChip, priorityEdge } from "@/components/shared/visual"
 import { LinkPending } from "@/components/shared/pending-ui"
 import { ListSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -137,6 +138,16 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
           </Button>
         ) : null}
       </div>
+      {filtered ? (
+        <div className="flex flex-wrap gap-1.5">
+          {query ? <FilterChip label={`Search: ${query}`} href={issueHref({ ...filters, q: "" }, 1)} /> : null}
+          {projectId ? <FilterChip label={projects.find((project) => project.id === projectId)?.name ?? "Project"} href={issueHref({ ...filters, projectId: undefined }, 1)} /> : null}
+          {statusId ? <FilterChip label={catalog.statuses.find((status) => status.id === statusId)?.name ?? "Status"} href={issueHref({ ...filters, statusId: undefined }, 1)} /> : null}
+          {priorityId ? <FilterChip label={catalog.priorities.find((priority) => priority.id === priorityId)?.name ?? "Priority"} href={issueHref({ ...filters, priorityId: undefined }, 1)} /> : null}
+          {typeId ? <FilterChip label={catalog.types.find((type) => type.id === typeId)?.name ?? "Type"} href={issueHref({ ...filters, typeId: undefined }, 1)} /> : null}
+          {assignee !== "all" ? <FilterChip label={assignee === "me" ? "Assigned to me" : "Unassigned"} href={issueHref({ ...filters, assignee: "all" }, 1)} /> : null}
+        </div>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         {result.total} {result.total === 1 ? "issue" : "issues"}
       </p>
@@ -152,7 +163,7 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
           }
         />
       ) : (
-        <div className="min-w-0 overflow-x-auto rounded-lg border bg-card">
+        <div className="min-w-0 overflow-x-auto rounded-xl border bg-card shadow-sm">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b text-left text-xs text-muted-foreground">
               <tr>
@@ -168,9 +179,9 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
             </thead>
             <tbody>
               {result.items.map((issue) => (
-                <tr key={issue.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={issue.id} className={`border-b border-l-2 last:border-b-0 hover:bg-muted/40 ${priorityEdge(issue.priority)}`}>
                   <td className="px-3 py-2 align-middle">
-                    <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:underline">
+                    <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:underline">
                       <LinkPending />
                       {issueKey(issue.projectKey, issue.number)}
                     </Link>
@@ -181,8 +192,8 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
                     </IssueOpenButton>
                   </td>
                   <td className="px-3 py-2 align-middle text-muted-foreground">{issue.typeName}</td>
-                  <td className="px-3 py-2 align-middle"><Badge variant="secondary">{issue.status}</Badge></td>
-                  <td className="px-3 py-2 align-middle"><Badge variant="outline">{issue.priority}</Badge></td>
+                  <td className="px-3 py-2 align-middle"><StatusChip name={issue.status} category={catalog.statuses.find((status) => status.name === issue.status)?.category} /></td>
+                  <td className="px-3 py-2 align-middle"><PriorityMark name={issue.priority} /></td>
                   <td className="max-w-32 truncate px-3 py-2 align-middle">{issue.assigneeName ?? "Unassigned"}</td>
                   <td className="max-w-32 truncate px-3 py-2 align-middle">{issue.reporterName}</td>
                   <td className="whitespace-nowrap px-3 py-2 align-middle text-muted-foreground">{formatProjectDate(issue.updatedAt)}</td>
@@ -193,13 +204,31 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
         </div>
       )}
       {pages > 1 ? (
-        <div className="flex items-center gap-2 text-sm">
-          {result.page > 1 ? <Link href={issueHref(filters, result.page - 1)} className="underline">Previous</Link> : null}
-          <span className="text-muted-foreground">Page {result.page} of {pages}</span>
-          {result.page < pages ? <Link href={issueHref(filters, result.page + 1)} className="underline">Next</Link> : null}
+        <div className="flex items-center justify-end gap-2">
+          <p className="mr-auto text-xs text-muted-foreground">Page {result.page} of {pages}</p>
+          {result.page > 1 ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={issueHref(filters, result.page - 1)}>Previous</Link>
+            </Button>
+          ) : null}
+          {result.page < pages ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={issueHref(filters, result.page + 1)}>Next</Link>
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
+  )
+}
+
+function FilterChip({ label, href }: { label: string; href: string }) {
+  return (
+    <Link href={href} className="inline-flex items-center rounded-full border bg-card px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
+      {label}
+      <span className="ml-1" aria-hidden>×</span>
+      <span className="sr-only">Remove filter</span>
+    </Link>
   )
 }
 

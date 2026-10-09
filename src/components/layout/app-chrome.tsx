@@ -41,7 +41,7 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
         <SidebarTrigger />
         <Button
           variant="outline"
-          className="h-8 min-w-0 flex-1 justify-start px-2 text-muted-foreground sm:max-w-sm"
+          className="h-8 min-w-0 flex-1 justify-start rounded-full bg-muted/70 px-3 text-muted-foreground sm:max-w-md"
           onClick={openSearch}
         >
           <Search />

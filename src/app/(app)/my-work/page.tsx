@@ -9,6 +9,8 @@ import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
 import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { LinkPending } from "@/components/shared/pending-ui"
+import { PriorityMark } from "@/components/shared/priority-mark"
+import { StatusChip } from "@/components/shared/visual"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
@@ -151,7 +153,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
       {work.total === 0 ? (
         <EmptyWork view={view} filtered={filtered} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b text-xs text-muted-foreground">
               <tr>
@@ -172,15 +174,15 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
                 const overdue = issue.dueDate !== null && issue.dueDate < today
                 return (
                   <tr key={issue.id} className="hover:bg-muted/40">
-                    <td className="px-3 py-2 font-medium text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</td>
                     <td className="max-w-64 px-3 py-2">
                       <IssueOpenButton issueId={issue.id} className="block w-full truncate text-left font-medium hover:underline">
                         {issue.title}
                       </IssueOpenButton>
                     </td>
                     <td className="max-w-40 truncate px-3 py-2 text-muted-foreground">{issue.projectName}</td>
-                    <td className="px-3 py-2">{issue.status}</td>
-                    <td className="px-3 py-2">{issue.priority}</td>
+                    <td className="px-3 py-2"><StatusChip name={issue.status} /></td>
+                    <td className="px-3 py-2"><PriorityMark name={issue.priority} /></td>
                     <td className="max-w-36 truncate px-3 py-2 text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</td>
                     <td className={overdue ? "px-3 py-2 text-destructive" : "px-3 py-2 text-muted-foreground"}>
                       {issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "—"}
@@ -200,6 +202,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
       )}
       {work.total > work.pageSize ? (
         <div className="flex items-center justify-end gap-2">
+          <p className="mr-auto text-xs text-muted-foreground">Page {work.page} of {Math.ceil(work.total / work.pageSize)}</p>
           {work.page > 1 ? (
             <Button asChild variant="outline" size="sm">
               <Link href={workHref({ ...filters, page: work.page - 1 })}>Previous</Link>
@@ -219,7 +222,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
 function EmptyWork({ view, filtered }: { view: MyWorkView; filtered: boolean }) {
   const copy = emptyCopy(view, filtered)
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-card/70 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-2.5">
         <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           <SummaryIcon view={view} />

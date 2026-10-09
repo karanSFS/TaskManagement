@@ -40,29 +40,60 @@ export function MyWorkSkeleton() {
     <div className="grid gap-3" role="status" aria-live="polite">
       <p className="sr-only">Loading your work</p>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
       </div>
       <Skeleton className="h-8 w-full" />
-      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full rounded-xl" />
     </div>
   )
 }
+
 export function ProjectsSkeleton() {
   return (
     <div className="grid gap-3" role="status" aria-live="polite">
       <p className="sr-only">Loading projects</p>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
       </div>
       <Skeleton className="h-8 w-full" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
+      <div className="grid gap-3 md:grid-cols-2">
+        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-36 rounded-xl" />
+      </div>
+    </div>
+  )
+}
+
+export function BoardSkeleton() {
+  return (
+    <div className="grid gap-3" role="status" aria-live="polite">
+      <p className="sr-only">Loading board</p>
+      <Skeleton className="h-8 w-48" />
+      <div className="flex gap-3 overflow-hidden">
+        <Skeleton className="h-72 w-72 shrink-0 rounded-xl" />
+        <Skeleton className="h-72 w-72 shrink-0 rounded-xl" />
+        <Skeleton className="h-72 w-72 shrink-0 rounded-xl" />
+      </div>
+    </div>
+  )
+}
+
+export function DetailSkeleton() {
+  return (
+    <div className="grid gap-4" role="status" aria-live="polite">
+      <p className="sr-only">Loading</p>
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-10 w-2/3" />
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
     </div>
   )
 }

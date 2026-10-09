@@ -55,34 +55,17 @@ export function WorkSwitcher({
               aria-current={active ? "page" : undefined}
               aria-busy={waiting}
               onClick={(event) => select(card.id, event)}
-              className={
-                active
-                  ? "flex h-14 items-center gap-2.5 rounded-lg border border-primary bg-primary/5 px-3"
-                  : "flex h-14 items-center gap-2.5 rounded-lg border bg-card px-3 hover:bg-muted/40"
-              }
+              className={`overflow-hidden rounded-xl border bg-card shadow-sm transition-colors duration-200 ${active ? "border-primary" : "hover:border-primary/30"}`}
             >
-              <span
-                className={
-                  active
-                    ? "flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
-                    : "flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-                }
-              >
-                {waiting ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <CardIcon view={card.id} />}
+              <span className={`block h-1 ${cardTone(card.id, card.alert)}`} />
+              <span className="flex items-start justify-between gap-2 px-3 pt-3 text-muted-foreground">
+                <span className="text-xs font-medium">{card.label}</span>
+                {waiting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CardIcon view={card.id} />}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium leading-4">{card.label}</span>
-                <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{card.hint}</span>
-              </span>
-              <span
-                className={
-                  card.alert
-                    ? "shrink-0 font-mono text-base font-semibold leading-none text-destructive tabular-nums"
-                    : "shrink-0 font-mono text-base font-semibold leading-none tabular-nums"
-                }
-              >
+              <span className={card.alert ? "block px-3 pt-2 text-2xl font-semibold tracking-tight text-destructive tabular-nums" : "block px-3 pt-2 text-2xl font-semibold tracking-tight tabular-nums"}>
                 {card.value}
               </span>
+              <span className="block px-3 pt-1 pb-3 text-xs text-muted-foreground">{card.hint}</span>
             </Link>
           )
         })}
@@ -107,6 +90,13 @@ function WorkListSkeleton() {
       </div>
     </div>
   )
+}
+
+function cardTone(view: MyWorkView, alert: boolean) {
+  if (view === "overdue") return alert ? "bg-destructive" : "bg-warning"
+  if (view === "reported") return "bg-info"
+  if (view === "due") return "bg-warning"
+  return "bg-chart-2"
 }
 
 function CardIcon({ view }: { view: MyWorkView }) {

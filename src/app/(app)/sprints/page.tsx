@@ -8,7 +8,7 @@ import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared
 import { PlanSprintButton } from "@/components/sprints/create-sprint-form"
 import { SprintList } from "@/components/sprints/sprint-lists"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { DetailSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { listIssueProjects } from "@/lib/services/issue.service"
 import { getSprintWorkspace } from "@/lib/services/sprint.service"
@@ -21,7 +21,7 @@ export default function SprintsPage({ searchParams }: { searchParams: Promise<{ 
   return (
     <div className="grid min-w-0 gap-4">
       <PageHeader title="Sprints" description="Plan a sprint, start one, and complete it when the work is done." />
-      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+      <Suspense fallback={<DetailSkeleton />}>
         <SprintsContent searchParams={searchParams} />
       </Suspense>
     </div>
@@ -58,6 +58,9 @@ async function SprintsContent({ searchParams }: { searchParams: Promise<{ projec
         <Button asChild size="sm" variant="ghost">
           <Link href={`/backlog?projectId=${workspace.projectId}`}>Backlog</Link>
         </Button>
+        <p className="text-sm font-medium">
+          {workspace.projectName} <span className="font-mono text-xs font-normal text-muted-foreground">{workspace.projectKey}</span>
+        </p>
         {workspace.archived ? (
           <p className="text-sm text-muted-foreground">This project is archived. You can still close the active sprint.</p>
         ) : (

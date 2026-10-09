@@ -6,7 +6,7 @@ import { IssueBoard } from "@/components/issues/issue-board"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
-import { Skeleton } from "@/components/ui/skeleton"
+import { BoardSkeleton } from "@/components/shared/page-skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { listBoard, listIssueProjects } from "@/lib/services/issue.service"
 import { boardAssignees } from "@/lib/validations/issue"
@@ -21,7 +21,7 @@ export default function BoardPage({ searchParams }: { searchParams: Promise<Boar
   return (
     <div className="grid min-w-0 gap-4">
       <PageHeader title="Board" description="Move an issue into another column to change its status." />
-      <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <Suspense fallback={<BoardSkeleton />}>
         <BoardContent searchParams={searchParams} />
       </Suspense>
     </div>
@@ -83,6 +83,9 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
           </CreateIssueButton>
         )}
       </div>
+      <p className="text-sm font-medium">
+        {board.projectName} <span className="font-mono text-xs font-normal text-muted-foreground">{board.projectKey}</span>
+      </p>
       {board.archived ? (
         <p className="text-sm text-muted-foreground">
           This project is archived. You can still move existing issues. Restore it to file new ones.

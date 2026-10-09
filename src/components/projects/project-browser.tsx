@@ -76,30 +76,21 @@ export function ProjectBrowser({
         {cards.map((card) => {
           const active = card.id === shown
           const waiting = switching && card.id === shown
-          const className = active
-            ? "flex h-14 items-center gap-2.5 rounded-lg border border-primary bg-primary/5 px-3"
-            : "flex h-14 items-center gap-2.5 rounded-lg border bg-card px-3 hover:bg-muted/40"
+          const className = `overflow-hidden rounded-xl border bg-card shadow-sm transition-colors duration-200 ${active ? "border-primary" : "hover:border-primary/30"}`
           const body = (
             <>
-              <span
-                className={
-                  active
-                    ? "flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
-                    : "flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-                }
-              >
-                {waiting ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <SummaryIcon icon={card.id} />}
+              <span className={`block h-1 ${summaryTone(card.id)}`} />
+              <span className="flex items-start justify-between gap-2 px-3 pt-3 text-muted-foreground">
+                <span className="text-xs font-medium">{card.label}</span>
+                {waiting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <SummaryIcon icon={card.id} />}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium leading-4">{card.label}</span>
-                <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{card.hint}</span>
-              </span>
-              <span className="shrink-0 font-mono text-base font-semibold leading-none tabular-nums">{card.value}</span>
+              <span className="block px-3 pt-2 text-2xl font-semibold tracking-tight tabular-nums">{card.value}</span>
+              <span className="block px-3 pt-1 pb-3 text-xs text-muted-foreground">{card.hint}</span>
             </>
           )
           if (!card.href) {
             return (
-              <div key={card.id} className="flex h-14 items-center gap-2.5 rounded-lg border bg-card px-3">
+              <div key={card.id} className="overflow-hidden rounded-xl border bg-card shadow-sm">
                 {body}
               </div>
             )
@@ -108,10 +99,13 @@ export function ProjectBrowser({
             <Link
               key={card.id}
               href={card.href}
-              scroll={false}
+              scroll={card.id === "issues"}
               aria-current={active ? "page" : undefined}
               aria-busy={waiting}
-              onClick={(event) => select(card.id as ProjectCardFilter, event)}
+              onClick={(event) => {
+                if (card.id === "issues") return
+                select(card.id, event)
+              }}
               className={className}
             >
               {body}
@@ -163,12 +157,19 @@ function ProjectListSkeleton() {
         <Loader2 className="size-3.5 animate-spin" aria-hidden />
         Loading projects
       </p>
-      <div className="grid gap-2 p-3">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+      <div className="grid gap-3 p-3 md:grid-cols-2">
+        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-36 rounded-xl" />
       </div>
     </div>
   )
+}
+
+function summaryTone(id: ProjectSummaryCard["id"]) {
+  if (id === "active") return "bg-primary"
+  if (id === "archived") return "bg-muted-foreground/40"
+  if (id === "issues") return "bg-info"
+  return "bg-chart-2"
 }
 
 function SummaryIcon({ icon }: { icon: ProjectSummaryCard["id"] }) {

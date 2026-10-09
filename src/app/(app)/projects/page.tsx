@@ -10,6 +10,8 @@ import { ProjectIcon } from "@/components/projects/project-icon"
 import { EmptyState } from "@/components/shared/empty-state"
 import { LinkPending } from "@/components/shared/pending-ui"
 import { ProjectsSkeleton } from "@/components/shared/page-skeleton"
+import { projectAccent } from "@/components/shared/priority-mark"
+import { PersonStack, ProgressMeter } from "@/components/shared/visual"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -84,7 +86,7 @@ async function ProjectWorkspace({ searchParams }: { searchParams: Promise<Projec
         { id: "all", href: projectsHref({ ...filters, status: "all" }), label: "Total projects", value: projects.length, hint: "Workspaces you belong to" },
         { id: "active", href: projectsHref({ ...filters, status: "active" }), label: "Active projects", value: active.length, hint: "Open for new issues" },
         { id: "archived", href: projectsHref({ ...filters, status: "archived" }), label: "Archived projects", value: archived.length, hint: "Read only until restored" },
-        { id: "issues", label: "Open issues", value: openIssues, hint: "Not done, in your projects" },
+        { id: "issues", href: "/issues", label: "Open issues", value: openIssues, hint: "Not done, in your projects" },
       ]}
     >
       <p className="text-xs text-muted-foreground" role="status">
@@ -122,25 +124,31 @@ async function ProjectWorkspace({ searchParams }: { searchParams: Promise<Projec
 function ProjectCard({ project, userId }: { project: ProjectSummary; userId: string }) {
   const canEdit = project.role === "owner" || project.role === "admin" || project.leadId === userId
   const leadId = project.leadId && project.roster.some((member) => member.id === project.leadId) ? project.leadId : project.roster[0]?.id
+  const accent = projectAccent(project.key)
 
   return (
-    <li className="relative rounded-lg border bg-card">
-      <Link href={`/projects/${project.id}`} className="absolute inset-0 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={`Open ${project.name}`}>
-        <LinkPending className="absolute top-3 right-3 size-4" />
+    <li className="relative overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
+      <div className={`h-1 ${accent.bar}`} />
+      <Link href={`/projects/${project.id}`} className="absolute inset-0 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={`Open ${project.name}`}>
+        <LinkPending className="absolute top-4 right-3 size-4" />
       </Link>
       <div className="pointer-events-none flex items-start gap-3 px-3 py-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
           <ProjectIcon name={project.icon} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium">{project.name}</p>
             <Badge variant="outline">{project.key}</Badge>
-            {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : null}
+            {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : <Badge variant="outline">Active</Badge>}
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{project.description || "No description"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Lead {project.leadName} · {project.memberCount} {project.memberCount === 1 ? "member" : "members"} · {project.openIssueCount} open · {roleLabel(project.role)}
+          <div className="mt-2">
+            <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} barClass={accent.bar} />
+          </div>
+          <p className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Lead {project.leadName} · {roleLabel(project.role)}</span>
+            <PersonStack people={project.roster} total={project.memberCount} />
           </p>
         </div>
       </div>
