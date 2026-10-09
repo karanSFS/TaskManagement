@@ -5,7 +5,7 @@ import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueBoard } from "@/components/issues/issue-board"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
-import { Button } from "@/components/ui/button"
+import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { listBoard, listIssueProjects } from "@/lib/services/issue.service"
@@ -15,8 +15,7 @@ export const metadata = { title: "Board" }
 
 type BoardSearch = { projectId?: string; assignee?: string; q?: string }
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+const fieldClass = filterFieldClass
 
 export default function BoardPage({ searchParams }: { searchParams: Promise<BoardSearch> }) {
   return (
@@ -56,29 +55,32 @@ async function BoardContent({ searchParams }: { searchParams: Promise<BoardSearc
 
   return (
     <div className="grid gap-3">
-      <form action="/board" className="flex flex-wrap items-center gap-2">
-        <select name="projectId" defaultValue={board.projectId} className={fieldClass} aria-label="Project">
-          {projects.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-        <select name="assignee" defaultValue={assignee} className={fieldClass} aria-label="Assignee">
-          <option value="all">Anyone</option>
-          <option value="me">Assigned to me</option>
-          <option value="unassigned">Unassigned</option>
-        </select>
-        <input name="q" defaultValue={query} placeholder="Search titles" aria-label="Search titles" className={`${fieldClass} w-full max-w-xs`} />
-        <Button type="submit" variant="outline" size="sm">
-          Apply
-        </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterDrawer action="/board" title="Filter the board" activeCount={[query, assignee !== "all" ? assignee : ""].filter(Boolean).length}>
+          <FilterField label="Project">
+            <select name="projectId" defaultValue={board.projectId} className={fieldClass}>
+              {projects.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Assignee">
+            <select name="assignee" defaultValue={assignee} className={fieldClass}>
+              <option value="all">Anyone</option>
+              <option value="me">Assigned to me</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </FilterField>
+          <FilterField label="Search">
+            <input name="q" defaultValue={query} placeholder="Search titles" className={fieldClass} />
+          </FilterField>
+        </FilterDrawer>
         {board.archived ? null : (
           <CreateIssueButton projectId={board.projectId} size="sm" className="ml-auto">
             New issue
           </CreateIssueButton>
         )}
-      </form>
+      </div>
       {board.archived ? (
         <p className="text-sm text-muted-foreground">
           This project is archived. You can still move existing issues. Restore it to file new ones.

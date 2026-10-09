@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { updateProfile } from "@/lib/actions/auth"
 import { profileSchema, type ProfileValues } from "@/lib/validations/auth"
 
@@ -52,9 +53,9 @@ export function ProfileForm({ email, fullName }: ProfileFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-md gap-4" noValidate>
         <FormItem>
-          <FormLabel>Email</FormLabel>
-          <Input value={email} disabled readOnly />
-          <FormDescription>Email is managed by your sign-in account.</FormDescription>
+          <Label htmlFor="profile-email">Email</Label>
+          <Input id="profile-email" value={email} disabled readOnly />
+          <p className="text-xs text-muted-foreground">Email is managed by your sign-in account.</p>
         </FormItem>
         <FormField
           control={form.control}

@@ -39,8 +39,8 @@ export function SubtaskSection({
   })
 
   return (
-    <section className="grid gap-2">
-      <div className="flex items-center justify-between gap-2">
+    <section className="grid min-w-0 gap-2">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Subtasks</h2>
         {archived ? null : (
           <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>

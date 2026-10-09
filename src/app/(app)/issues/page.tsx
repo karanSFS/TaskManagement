@@ -6,6 +6,7 @@ import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
+import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { LinkPending } from "@/components/shared/pending-ui"
@@ -29,8 +30,7 @@ type IssueSearch = {
   dir?: string
 }
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+const fieldClass = filterFieldClass
 
 export default function IssuesPage({ searchParams }: { searchParams: Promise<IssueSearch> }) {
   return (
@@ -71,55 +71,72 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
 
   return (
     <div className="grid gap-3">
-      <form action="/issues" className="flex flex-wrap gap-2">
-        <input name="q" defaultValue={query} placeholder="Title, key, or label" aria-label="Search issues" className={`${fieldClass} w-full max-w-xs`} />
-        <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass} aria-label="Project">
-          <option value="">All projects</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>{project.name}</option>
-          ))}
-        </select>
-        <select name="statusId" defaultValue={statusId ?? ""} className={fieldClass} aria-label="Status">
-          <option value="">Any status</option>
-          {catalog.statuses.map((status) => (
-            <option key={status.id} value={status.id}>{status.name}</option>
-          ))}
-        </select>
-        <select name="priorityId" defaultValue={priorityId ?? ""} className={fieldClass} aria-label="Priority">
-          <option value="">Any priority</option>
-          {catalog.priorities.map((priority) => (
-            <option key={priority.id} value={priority.id}>{priority.name}</option>
-          ))}
-        </select>
-        <select name="typeId" defaultValue={typeId ?? ""} className={fieldClass} aria-label="Type">
-          <option value="">Any type</option>
-          {catalog.types.map((type) => (
-            <option key={type.id} value={type.id}>{type.name}</option>
-          ))}
-        </select>
-        <select name="assignee" defaultValue={assignee} className={fieldClass} aria-label="Assignee">
-          <option value="all">Anyone</option>
-          <option value="me">Assigned to me</option>
-          <option value="unassigned">Unassigned</option>
-        </select>
-        <select name="sort" defaultValue={sort} className={fieldClass} aria-label="Sort">
-          <option value="updated">Updated</option>
-          <option value="created">Created</option>
-          <option value="title">Title</option>
-          <option value="priority">Priority</option>
-          <option value="key">Key</option>
-        </select>
-        <select name="dir" defaultValue={ascending ? "asc" : "desc"} className={fieldClass} aria-label="Direction">
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
-        </select>
-        <Button type="submit" variant="outline" size="sm">Apply</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterDrawer action="/issues" title="Filter issues" activeCount={[query, projectId, statusId, priorityId, typeId, assignee !== "all" ? assignee : "", sort !== "updated" ? sort : "", ascending ? "asc" : ""].filter(Boolean).length}>
+          <FilterField label="Search">
+            <input name="q" defaultValue={query} placeholder="Title, key, or label" className={fieldClass} />
+          </FilterField>
+          <FilterField label="Project">
+            <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass}>
+              <option value="">All projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.name}</option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Status">
+            <select name="statusId" defaultValue={statusId ?? ""} className={fieldClass}>
+              <option value="">Any status</option>
+              {catalog.statuses.map((status) => (
+                <option key={status.id} value={status.id}>{status.name}</option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Priority">
+            <select name="priorityId" defaultValue={priorityId ?? ""} className={fieldClass}>
+              <option value="">Any priority</option>
+              {catalog.priorities.map((priority) => (
+                <option key={priority.id} value={priority.id}>{priority.name}</option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Type">
+            <select name="typeId" defaultValue={typeId ?? ""} className={fieldClass}>
+              <option value="">Any type</option>
+              {catalog.types.map((type) => (
+                <option key={type.id} value={type.id}>{type.name}</option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Assignee">
+            <select name="assignee" defaultValue={assignee} className={fieldClass}>
+              <option value="all">Anyone</option>
+              <option value="me">Assigned to me</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </FilterField>
+          <FilterField label="Sort">
+            <select name="sort" defaultValue={sort} className={fieldClass}>
+              <option value="updated">Updated</option>
+              <option value="created">Created</option>
+              <option value="title">Title</option>
+              <option value="priority">Priority</option>
+              <option value="key">Key</option>
+            </select>
+          </FilterField>
+          <FilterField label="Direction">
+            <select name="dir" defaultValue={ascending ? "asc" : "desc"} className={fieldClass}>
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </FilterField>
+        </FilterDrawer>
         {filtered ? (
           <Button asChild variant="ghost" size="sm">
             <Link href="/issues">Clear</Link>
           </Button>
         ) : null}
-      </form>
+      </div>
       <p className="text-xs text-muted-foreground">
         {result.total} {result.total === 1 ? "issue" : "issues"}
       </p>
@@ -135,7 +152,7 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="min-w-0 overflow-x-auto rounded-lg border bg-card">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b text-left text-xs text-muted-foreground">
               <tr>

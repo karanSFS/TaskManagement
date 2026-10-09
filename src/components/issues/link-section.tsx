@@ -37,8 +37,8 @@ export function LinkSection({
   const [linkType, setLinkType] = useState<(typeof linkTypes)[number]>("relates")
 
   return (
-    <section className="grid gap-2">
-      <div className="flex items-center justify-between gap-2">
+    <section className="grid min-w-0 gap-2">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Links</h2>
         {choices.length > 0 ? (
           <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
@@ -53,8 +53,8 @@ export function LinkSection({
             const phrase = labels[link.type as (typeof linkTypes)[number]]
             const text = phrase ? phrase[link.direction] : link.type
             return (
-              <li key={link.id} className="flex items-center gap-2 text-sm">
-                <span className="text-xs text-muted-foreground">{text}</span>
+              <li key={link.id} className="flex min-w-0 items-center gap-2 text-sm">
+                <span className="shrink-0 text-xs text-muted-foreground">{text}</span>
                 <Link href={`/issues/${link.issueId}`} className="inline-flex min-w-0 flex-1 items-center gap-1 truncate hover:underline">
                   <LinkPending />
                   {issueKey(link.projectKey, link.number)} {link.title}

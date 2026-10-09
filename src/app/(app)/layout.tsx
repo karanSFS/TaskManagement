@@ -31,14 +31,14 @@ async function AuthenticatedShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar />
-      <SidebarInset className="min-h-svh">
+      <SidebarInset className="min-h-svh min-w-0 overflow-x-hidden">
         <IssueDrawerProvider>
           <AppChrome
             user={{ id: user.id, email: user.email ?? "", fullName: displayName(user) }}
             notifications={notifications}
           />
           <div className="flex-1 px-3 py-4 md:px-5">
-            <main id="content" tabIndex={-1} className="min-w-0 outline-none">
+            <main id="content" tabIndex={-1} className="min-w-0 overflow-x-hidden outline-none">
               {children}
             </main>
           </div>

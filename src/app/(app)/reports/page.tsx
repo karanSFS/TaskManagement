@@ -3,6 +3,7 @@ import { Suspense } from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { ReportCharts } from "@/components/reports/report-charts"
+import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -11,8 +12,7 @@ import { getReports } from "@/lib/services/report.service"
 
 export const metadata = { title: "Reports" }
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+const fieldClass = filterFieldClass
 
 export default function ReportsPage({ searchParams }: { searchParams: Promise<{ projectId?: string }> }) {
   return (
@@ -35,20 +35,23 @@ async function ReportContent({ searchParams }: { searchParams: Promise<{ project
 
   return (
     <div className="grid gap-4">
-      <form action="/reports" className="flex flex-wrap gap-2">
-        <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass} aria-label="Project">
-          <option value="">All projects</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>{project.name}</option>
-          ))}
-        </select>
-        <Button type="submit" variant="outline" size="sm">Apply</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterDrawer action="/reports" title="Filter reports" activeCount={projectId ? 1 : 0}>
+          <FilterField label="Project">
+            <select name="projectId" defaultValue={projectId ?? ""} className={fieldClass}>
+              <option value="">All projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.name}</option>
+              ))}
+            </select>
+          </FilterField>
+        </FilterDrawer>
         {projectId ? (
           <Button asChild variant="ghost" size="sm">
             <Link href="/reports">Clear</Link>
           </Button>
         ) : null}
-      </form>
+      </div>
       <ReportCharts
         projects={report.projects}
         sprints={report.sprints}

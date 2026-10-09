@@ -7,6 +7,7 @@ import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
+import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { LinkPending } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -26,8 +27,7 @@ type WorkSearch = {
   page?: string
 }
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+const fieldClass = filterFieldClass
 
 const views: { id: MyWorkView; label: string; hint: string }[] = [
   { id: "assigned", label: "Assigned to me", hint: "Open issues on you" },
@@ -94,49 +94,58 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
         alert: item.id === "overdue" && work.counts.overdue > 0,
       }))}
       toolbar={
-      <form action="/my-work" className="flex flex-wrap items-center gap-2">
-        <input type="hidden" name="view" value={view} />
-        <input name="q" defaultValue={filters.q} placeholder="Search title or KEY-1" aria-label="Search your work" className={`${fieldClass} w-full sm:w-56`} />
-        <select name="statusId" defaultValue={filters.statusId} aria-label="Status" className={fieldClass}>
-          <option value="">Open statuses</option>
-          {catalog.statuses.map((status) => (
-            <option key={status.id} value={status.id}>
-              {status.name}
-            </option>
-          ))}
-        </select>
-        <select name="priorityId" defaultValue={filters.priorityId} aria-label="Priority" className={fieldClass}>
-          <option value="">Any priority</option>
-          {catalog.priorities.map((priority) => (
-            <option key={priority.id} value={priority.id}>
-              {priority.name}
-            </option>
-          ))}
-        </select>
-        <select name="sort" defaultValue={sort} aria-label="Sort" className={fieldClass}>
-          <option value="updated">Updated</option>
-          <option value="due">Due date</option>
-          <option value="priority">Priority</option>
-          <option value="title">Title</option>
-        </select>
-        <select name="dir" defaultValue={filters.dir} aria-label="Sort direction" className={fieldClass}>
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
-        </select>
-        <Button type="submit" variant="secondary" size="sm">
-          Apply
-        </Button>
-        {filtered ? (
-          <Button asChild variant="ghost" size="sm">
-            <Link href={workHref({ view })}>Clear</Link>
-          </Button>
-        ) : null}
-        {work.total > 0 ? (
-          <p className="text-xs text-muted-foreground sm:ml-auto" role="status">
-            Showing {from}–{to} of {work.total}
-          </p>
-        ) : null}
-      </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDrawer
+            action="/my-work"
+            title="Filter your work"
+            activeCount={[filters.q, filters.statusId, filters.priorityId, sort !== "updated" ? sort : "", filters.dir === "asc" ? "asc" : ""].filter(Boolean).length}
+          >
+            <input type="hidden" name="view" value={view} />
+            <FilterField label="Search">
+              <input name="q" defaultValue={filters.q} placeholder="Title or KEY-1" className={fieldClass} />
+            </FilterField>
+            <FilterField label="Status">
+              <select name="statusId" defaultValue={filters.statusId} className={fieldClass}>
+                <option value="">Open statuses</option>
+                {catalog.statuses.map((status) => (
+                  <option key={status.id} value={status.id}>{status.name}</option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Priority">
+              <select name="priorityId" defaultValue={filters.priorityId} className={fieldClass}>
+                <option value="">Any priority</option>
+                {catalog.priorities.map((priority) => (
+                  <option key={priority.id} value={priority.id}>{priority.name}</option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Sort">
+              <select name="sort" defaultValue={sort} className={fieldClass}>
+                <option value="updated">Updated</option>
+                <option value="due">Due date</option>
+                <option value="priority">Priority</option>
+                <option value="title">Title</option>
+              </select>
+            </FilterField>
+            <FilterField label="Direction">
+              <select name="dir" defaultValue={filters.dir} className={fieldClass}>
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+            </FilterField>
+          </FilterDrawer>
+          {filtered ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href={workHref({ view })}>Clear</Link>
+            </Button>
+          ) : null}
+          {work.total > 0 ? (
+            <p className="text-xs text-muted-foreground sm:ml-auto" role="status">
+              Showing {from}–{to} of {work.total}
+            </p>
+          ) : null}
+        </div>
       }
     >
       {work.total === 0 ? (

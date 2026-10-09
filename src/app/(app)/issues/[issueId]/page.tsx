@@ -43,7 +43,7 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   const assignee = issue.members.find((member) => member.id === issue.assigneeId)?.name ?? "Unassigned"
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -86,8 +86,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
         <Meta label="Updated" value={formatProjectDate(issue.updatedAt)} />
         <Meta label="Due" value={issue.dueDate ? formatDueDate(issue.dueDate) : "No due date"} />
       </dl>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="grid gap-6">
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="grid min-w-0 gap-4">
           <section className="rounded-lg border bg-card px-3 py-3">
             <h2 className="text-sm font-medium">Description</h2>
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{issue.description || "No description yet."}</p>
@@ -106,7 +106,7 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             archived={issue.projectArchived}
           />
         </div>
-        <div className="grid gap-4">
+        <aside className="grid min-w-0 content-start gap-4">
           <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
           <AttachmentSection issueId={issue.id} projectId={issue.projectId} attachments={attachments} />
           <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} />
@@ -115,8 +115,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             {issue.history.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet.</p> : null}
             <ul className="grid gap-2">
               {issue.history.map((entry) => (
-                <li key={entry.id} className="text-sm">
-                  <p>{entry.summary}</p>
+                <li key={entry.id} className="min-w-0 text-sm">
+                  <p className="break-words">{entry.summary}</p>
                   <p className="text-xs text-muted-foreground">
                     {entry.actorName} · {formatProjectDate(entry.createdAt)}
                   </p>
@@ -124,7 +124,7 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
               ))}
             </ul>
           </section>
-        </div>
+        </aside>
       </div>
     </div>
   )

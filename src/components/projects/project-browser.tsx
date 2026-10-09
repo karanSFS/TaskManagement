@@ -5,6 +5,7 @@ import { useState, type FormEvent, type MouseEvent, type ReactNode } from "react
 import { Archive, FolderKanban, FolderOpen, ListTodo, Loader2 } from "lucide-react"
 
 import { CreateProjectButton } from "@/components/projects/create-project-dialog"
+import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -18,8 +19,7 @@ export type ProjectSummaryCard = {
   value: number
 }
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+const fieldClass = filterFieldClass
 
 export function ProjectBrowser({
   signature,
@@ -119,22 +119,27 @@ export function ProjectBrowser({
           )
         })}
       </div>
-      <form action="/projects" onSubmit={apply} className={loading ? "pointer-events-none flex flex-wrap items-center gap-2 opacity-60" : "flex flex-wrap items-center gap-2"}>
-        {status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
-        <input name="q" defaultValue={query} placeholder="Search name, key, or lead" aria-label="Search projects" className={`${fieldClass} w-full sm:w-64`} />
-        <select name="sort" defaultValue={sort} aria-label="Sort" className={fieldClass}>
-          <option value="name">Name</option>
-          <option value="key">Key</option>
-          <option value="issues">Open issues</option>
-          <option value="members">Members</option>
-        </select>
-        <select name="dir" defaultValue={dir} aria-label="Sort direction" className={fieldClass}>
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-        <Button type="submit" variant="secondary" size="sm">
-          Apply
-        </Button>
+      <div className={loading ? "pointer-events-none flex flex-wrap items-center gap-2 opacity-60" : "flex flex-wrap items-center gap-2"}>
+        <FilterDrawer action="/projects" title="Filter projects" activeCount={[query, sort !== "name" ? sort : "", dir === "desc" ? dir : ""].filter(Boolean).length} onSubmit={apply}>
+          {status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
+          <FilterField label="Search">
+            <input name="q" defaultValue={query} placeholder="Name, key, or lead" className={fieldClass} />
+          </FilterField>
+          <FilterField label="Sort">
+            <select name="sort" defaultValue={sort} className={fieldClass}>
+              <option value="name">Name</option>
+              <option value="key">Key</option>
+              <option value="issues">Open issues</option>
+              <option value="members">Members</option>
+            </select>
+          </FilterField>
+          <FilterField label="Direction">
+            <select name="dir" defaultValue={dir} className={fieldClass}>
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </FilterField>
+        </FilterDrawer>
         {filtered ? (
           <Button asChild variant="ghost" size="sm">
             <Link href="/projects" onClick={() => setWait(signature)}>
@@ -145,7 +150,7 @@ export function ProjectBrowser({
         <div className="sm:ml-auto">
           <CreateProjectButton takenKeys={takenKeys} />
         </div>
-      </form>
+      </div>
       {loading ? <ProjectListSkeleton /> : children}
     </div>
   )

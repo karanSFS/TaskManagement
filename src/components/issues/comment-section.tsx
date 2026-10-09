@@ -38,8 +38,8 @@ export function CommentSection({
   })
 
   return (
-    <section className="grid gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <section className="grid min-w-0 gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Comments</h2>
         <RevealButton type="button" size="sm" variant="outline" onReveal={() => setComposerOpen(true)}>
           Add comment

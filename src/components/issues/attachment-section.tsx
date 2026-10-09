@@ -53,13 +53,13 @@ export function AttachmentSection({
   }
 
   return (
-    <section className="grid gap-2">
+    <section className="grid min-w-0 gap-2">
       <h2 className="text-sm font-medium">Attachments</h2>
       {attachments.length === 0 ? <p className="text-sm text-muted-foreground">No files yet.</p> : null}
       {attachments.length > 0 ? (
         <ul className="grid gap-1">
           {attachments.map((file) => (
-            <li key={file.id} className="flex items-center gap-2 text-sm">
+            <li key={file.id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <button
                 type="button"
                 className="min-w-0 flex-1 truncate text-left hover:underline"
@@ -104,7 +104,7 @@ export function AttachmentSection({
           ref={inputRef}
           type="file"
           accept={attachmentMimeTypes.join(",")}
-          className="block w-full text-sm text-foreground file:mr-2 file:rounded-md file:border file:bg-background file:px-2 file:py-1"
+          className="block w-full max-w-full text-sm text-foreground file:mr-2 file:rounded-md file:border file:bg-background file:px-2 file:py-1"
           disabled={pending}
           onChange={(event) => onFile(event.target.files?.[0])}
         />
