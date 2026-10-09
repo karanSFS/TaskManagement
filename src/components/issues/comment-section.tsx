@@ -19,10 +19,12 @@ export function CommentSection({
   issueId,
   currentUserId,
   comments,
+  mentionNames,
 }: {
   issueId: string
   currentUserId: string
   comments: { id: string; body: string; createdAt: string; authorId: string; authorName: string }[]
+  mentionNames: string[]
 }) {
   const [pending, startTransition] = useTransition()
   const form = useForm<CommentValues>({
@@ -82,12 +84,15 @@ export function CommentSection({
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <Textarea placeholder="Add a comment" {...field} />
+                  <Textarea placeholder="Add a comment. Mention a teammate with @Name." {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+          {mentionNames.length > 0 ? (
+            <p className="text-xs text-muted-foreground">Teammates: {mentionNames.join(", ")}</p>
+          ) : null}
           <Button type="submit" disabled={pending} className="w-fit" size="sm">
             {pending ? "Sending…" : "Add comment"}
           </Button>

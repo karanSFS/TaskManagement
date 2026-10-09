@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
+import { AttachmentSection } from "@/components/issues/attachment-section"
 import { CommentSection } from "@/components/issues/comment-section"
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
 import { IssueEditor } from "@/components/issues/issue-editor"
@@ -13,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate, issueKey } from "@/lib/projects/format"
 import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
+import { listIssueAttachments } from "@/lib/services/attachment.service"
 
 export const metadata = { title: "Issue" }
 
@@ -28,7 +30,11 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   const [{ issueId }, user] = await Promise.all([params, getCurrentUser()])
   if (!user || !isUuid(issueId)) notFound()
 
-  const [issue, catalog] = await Promise.all([getIssue(issueId, user.id), getIssueCatalog()])
+  const [issue, catalog, attachments] = await Promise.all([
+    getIssue(issueId, user.id),
+    getIssueCatalog(),
+    listIssueAttachments(user.id, issueId),
+  ])
   if (!issue) notFound()
 
   return (
@@ -67,7 +73,12 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
               dueDate: issue.dueDate,
             }}
           />
-          <CommentSection issueId={issue.id} currentUserId={user.id} comments={issue.comments} />
+          <CommentSection
+            issueId={issue.id}
+            currentUserId={user.id}
+            comments={issue.comments}
+            mentionNames={issue.members.filter((member) => member.id !== user.id).map((member) => member.name)}
+          />
           <SubtaskSection
             issueId={issue.id}
             projectKey={issue.projectKey}
@@ -78,6 +89,7 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
         </div>
         <div className="grid gap-4">
           <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
+          <AttachmentSection issueId={issue.id} projectId={issue.projectId} attachments={attachments} />
           <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} />
           <section className="grid gap-2">
             <h2 className="text-sm font-medium">History</h2>

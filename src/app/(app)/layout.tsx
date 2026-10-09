@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getCurrentUser } from "@/lib/auth/session"
 import { displayName } from "@/lib/auth/user"
+import { listNotificationPreview } from "@/lib/services/notification.service"
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -23,14 +24,17 @@ async function AuthenticatedShell({ children }: { children: ReactNode }) {
     redirect("/login")
   }
 
-  const cookieStore = await cookies()
+  const [cookieStore, notifications] = await Promise.all([cookies(), listNotificationPreview(user.id)])
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false"
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar />
       <SidebarInset className="min-h-svh">
-        <AppChrome user={{ email: user.email ?? "", fullName: displayName(user) }} />
+        <AppChrome
+          user={{ id: user.id, email: user.email ?? "", fullName: displayName(user) }}
+          notifications={notifications}
+        />
         <div className="flex-1 px-3 py-4 md:px-5">{children}</div>
       </SidebarInset>
     </SidebarProvider>

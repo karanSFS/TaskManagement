@@ -20,13 +20,13 @@ Last updated: 2026-10-08.
 | 5 | Kanban | Done. `/board` has columns, drag and drop, and status changes. |
 | 6 | Backlog and sprints | Done. Plan, start, and complete sprints. One active sprint per project. |
 | 7 | Search and filters | Done. Issues search by key, title, and label. The list sorts and filters in Postgres. |
-| 8 | Notifications and storage | Not started. The `attachments` bucket and notification trigger exist. |
+| 8 | Notifications and storage | Done. Inbox, mentions, private attachments, and realtime updates. |
 | 9 | Dashboard and reports | Home shows real project and assignment counts. Reports and charts are not built. |
 | 10 | Production polish | Not started |
 
-**Next step:** Phase 8, notifications and storage. The inbox, mentions, and attachment uploads are not built. Do not start reports in the same step.
+**Next step:** Phase 9, dashboard and reports. Home already shows project and assignment counts. Reports and charts are not built. Do not start production polish in the same step.
 
-A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Notifications and reports are still later phases.
+A stability pass on 2026-10-08 fixed the finished phases before launch: email confirmation accepts both link styles, auth errors are no longer raw database text, archived projects cannot take new issues, only owners can change other owners, issue counts are computed in Postgres, issues can be created with an assignee and due date, issues can be deleted by the reporter or a manager, and Home shows real counts. Reports are still a later phase.
 
 The latest issues commit is local on `main` and may be ahead of `origin/main`. Vercel only shows what has been pushed. Do not commit or push unless asked.
 
@@ -118,7 +118,7 @@ Buttons stay disabled while a mutation is in flight. Do not use optimistic updat
 - Reference tables (`issue_types`, `issue_statuses`, `priorities`) are select-only for signed-in users.
 - Anonymous has no grants on application tables.
 - Inviting a member is `public.add_project_member(project, email, role)`. Email lookup goes through a private function because profiles do not expose strangers.
-- Storage bucket `attachments` is private, 50 MB. When uploads are built, check type and size and do not trust the original filename.
+- Storage bucket `attachments` is private, 50 MB. Uploads check type and size on the server after the file is stored. The object path is a random id, not the original file name.
 
 ## Important database behavior
 
@@ -142,6 +142,7 @@ Migrations:
 
 - `supabase/migrations/20261008102923_taskforge_schema.sql`
 - `supabase/migrations/20261008110403_project_members_and_leads.sql`
+- `supabase/migrations/20261009040943_mention_notifications.sql`
 
 Tables: `profiles`, `projects`, `project_members`, `issues`, `issue_types`, `issue_statuses`, `priorities`, `labels`, `issue_labels`, `comments`, `attachments`, `issue_history`, `sprints`, `sprint_issues`, `notifications`, `issue_links`.
 
@@ -198,7 +199,11 @@ Done. `public.search_issues` matches title, `project key-number`, and label name
 
 ### Phase 8 — Notifications and storage
 
-`/notifications`. Assignments already insert a notification from a trigger. Add the inbox, mentions, Storage uploads for attachments, and realtime updates. Validate file type and size. Private bucket only.
+Done. `/notifications` lists your notifications, 20 per page, with an unread filter. The bell in the top bar shows the latest eight and an unread count, and it refreshes from Realtime when a notification is inserted or updated. Marking one read, or all of them, writes `read_at`.
+
+Assignments, comments on your issues, sprint moves, and being added to a project already created notifications. A comment that contains `@Display Name` now notifies that teammate with kind `mentioned`. The assignee still gets one `commented` notification, not a second mention. Longer names win, so `@Ann Smith` does not also notify Ann.
+
+Attachments upload from the issue page straight into the private `attachments` bucket. The path is `{project id}/{issue id}/{random id}`, never the original file name. A server action then reads the stored size and type, allows only the bucket's file types up to 50 MB, and writes the `attachments` row. Downloads use a short-lived signed URL. The uploader or a project manager can remove a file.
 
 ### Phase 9 — Dashboard and reports
 
@@ -224,8 +229,9 @@ src/app/auth                   confirm and sign-out
 src/components/ui              shadcn/ui
 src/components/layout          sidebar, top bar, search
 src/components/projects        project forms and members
-src/components/issues          issue form, editor, comments, labels, subtasks, links
-src/lib/services               project, issue, and profile services
+src/components/issues          issue form, editor, comments, labels, subtasks, links, attachments
+src/components/notifications   inbox
+src/lib/services               project, issue, profile, notification, and attachment services
 src/lib/actions                auth, projects, issues
 src/lib/errors                 AppError classes
 src/lib/validations            Zod schemas

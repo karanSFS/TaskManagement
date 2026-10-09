@@ -2,25 +2,31 @@
 
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Monitor, Moon, Plus, Search, Sun } from "lucide-react"
+import { Monitor, Moon, Plus, Search, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { GlobalSearch } from "@/components/layout/global-search"
+import { NotificationBell } from "@/components/layout/notification-bell"
 import { UserMenu } from "@/components/layout/user-menu"
+import type { NotificationItem } from "@/lib/services/notification.service"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Kbd } from "@/components/ui/kbd"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useKeyboardShortcut } from "@/lib/hooks/use-keyboard-shortcut"
 
 type AppChromeProps = {
   user: {
+    id: string
     email: string
     fullName: string
   }
+  notifications: {
+    unread: number
+    items: NotificationItem[]
+  }
 }
 
-export function AppChrome({ user }: AppChromeProps) {
+export function AppChrome({ user, notifications }: AppChromeProps) {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
   const openSearch = useCallback(() => setSearchOpen(true), [])
@@ -39,7 +45,7 @@ export function AppChrome({ user }: AppChromeProps) {
           onClick={openSearch}
         >
           <Search />
-          <span className="truncate">Search pages</span>
+          <span className="truncate">Search issues and pages</span>
           <Kbd className="ml-auto font-mono">/</Kbd>
         </Button>
         <Button className="ml-auto" onClick={openCreate}>
@@ -47,32 +53,12 @@ export function AppChrome({ user }: AppChromeProps) {
           <span className="hidden sm:inline">Create issue</span>
           <Kbd className="hidden bg-primary-foreground/15 font-mono text-primary-foreground sm:inline-flex">C</Kbd>
         </Button>
-        <NotificationsMenu />
+        <NotificationBell userId={user.id} unread={notifications.unread} items={notifications.items} />
         <ThemeToggle />
         <UserMenu user={user} />
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </>
-  )
-}
-
-function NotificationsMenu() {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
-        <div className="px-2 py-3">
-          <p className="text-sm font-medium">Notifications</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Nothing yet. Assignments, mentions, and comments arrive in Phase 8.
-          </p>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }
 
