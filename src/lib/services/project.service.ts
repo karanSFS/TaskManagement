@@ -91,6 +91,14 @@ function raiseProjectWriteError(message: string): never {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot manage members of this project")
   }
 
+  if (message.includes("cannot remove that member")) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+  }
+
+  if (message.includes("Sign in to manage members")) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Sign in to manage members.")
+  }
+
   if (message.includes("Only an owner can remove another owner")) {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can remove another owner.")
   }
@@ -430,17 +438,41 @@ export async function removeProjectMemberRecord(actorId: string, projectId: stri
     }
   }
 
-  const { error } = await supabase.from("project_members").delete().eq("id", membershipId).eq("project_id", projectId)
+  const { data: removedUserId, error } = await supabase.rpc("remove_project_member", {
+    target_membership_id: membershipId,
+  })
   if (error) raiseProjectWriteError(error.message)
+  if (!removedUserId) {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+  }
 
-  const { data: still, error: stillError } = await supabase
-    .from("project_members")
-    .select("id")
-    .eq("id", membershipId)
+  return removedUserId
+}
+
+export async function deleteArchivedProjectRecord(userId: string, projectId: string) {
+  const supabase = await createClient()
+  const { data: project, error: loadError } = await supabase
+    .from("projects")
+    .select("id, archived_at, project_members!inner(role, user_id)")
+    .eq("id", projectId)
+    .eq("project_members.user_id", userId)
     .maybeSingle()
 
-  if (stillError) throw new DatabaseError("Could not confirm the member was removed.")
-  if (still) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot remove that member.")
+  if (loadError) throw new DatabaseError("Could not load this project.")
+  if (!project) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot delete this project.")
 
-  return target.user_id
+  const membership = one(project.project_members as { role: string; user_id: string } | { role: string; user_id: string }[])
+  if (!membership || membership.role !== "owner") {
+    throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can delete this project.")
+  }
+  if (!project.archived_at) {
+    throw new AppError("PROJECT_NOT_ARCHIVED", "Archive the project before deleting it.", 409)
+  }
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectId)
+  if (error) raiseProjectWriteError(error.message)
+
+  const { data: still, error: stillError } = await supabase.from("projects").select("id").eq("id", projectId).maybeSingle()
+  if (stillError) throw new DatabaseError("Could not confirm the project was deleted.")
+  if (still) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner can delete an archived project.")
 }

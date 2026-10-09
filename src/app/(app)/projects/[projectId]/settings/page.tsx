@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
 import { ArchiveProjectButton } from "@/components/projects/archive-project-button"
+import { DeleteProjectButton } from "@/components/projects/delete-project-button"
 import { EditProjectButton } from "@/components/projects/create-project-dialog"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { FormSkeleton } from "@/components/shared/page-skeleton"
@@ -94,7 +95,15 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
               ? "Restoring the project lets members file new issues again. Existing issues stay as they are."
               : "Archived projects stay readable, but nobody can file new issues in them."}
           </p>
-          <ArchiveProjectButton projectId={project.id} archived={Boolean(project.archivedAt)} />
+          <div className="flex flex-wrap gap-2">
+            <ArchiveProjectButton projectId={project.id} archived={Boolean(project.archivedAt)} />
+            {project.archivedAt && project.role === "owner" ? (
+              <DeleteProjectButton projectId={project.id} projectName={project.name} />
+            ) : null}
+          </div>
+          {project.archivedAt && project.role === "owner" ? (
+            <p className="text-xs text-muted-foreground">Deleting removes the project for every member.</p>
+          ) : null}
         </section>
       ) : null}
     </div>

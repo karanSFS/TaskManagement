@@ -9,6 +9,7 @@ import { AppError } from "@/lib/errors/app-error"
 import {
   addProjectMemberRecord,
   createProjectRecord,
+  deleteArchivedProjectRecord,
   removeProjectMemberRecord,
   setProjectArchived as archiveProjectRecord,
   updateMemberRoleRecord,
@@ -140,6 +141,21 @@ export async function updateMemberRole(
     return { success: "Role updated." }
   } catch (error) {
     return failure(error, "updateMemberRole", user.id, projectId)
+  }
+}
+
+export async function deleteArchivedProject(projectId: string): Promise<ActionState> {
+  const user = await getCurrentUser()
+  if (!user) {
+    return { error: "Sign in to delete this project." }
+  }
+
+  try {
+    await deleteArchivedProjectRecord(user.id, projectId)
+    projectPaths(projectId)
+    return { success: "Project deleted.", href: "/projects" }
+  } catch (error) {
+    return failure(error, "deleteArchivedProject", user.id, projectId)
   }
 }
 

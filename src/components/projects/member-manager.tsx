@@ -166,6 +166,7 @@ function MemberItem({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [removeError, setRemoveError] = useState("")
   const [role, setRole] = useState(member.role)
   const canRemove = !isLastOwner && (canManage || member.isYou)
 
@@ -220,7 +221,10 @@ function MemberItem({
         </RevealButton>
         <ConfirmDialog
           open={confirmOpen}
-          onOpenChange={setConfirmOpen}
+          onOpenChange={(next) => {
+            if (!next) setRemoveError("")
+            setConfirmOpen(next)
+          }}
           title={member.isYou ? "Leave this project?" : `Remove ${member.name}?`}
           description={
             member.isYou
@@ -230,11 +234,13 @@ function MemberItem({
           confirmLabel={member.isYou ? "Leave project" : "Remove member"}
           pending={pending}
           destructive
+          error={removeError}
           onConfirm={() => {
+            setRemoveError("")
             startTransition(async () => {
               const result = await removeProjectMember(projectId, member.id)
               if (result?.error) {
-                toast.error(result.error)
+                setRemoveError(result.error)
                 return
               }
               toast.success(result?.success ?? "Member removed.")

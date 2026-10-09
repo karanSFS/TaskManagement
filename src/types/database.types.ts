@@ -770,6 +770,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      remove_project_member: {
+        Args: { target_membership_id: string }
+        Returns: string
+      }
       add_project_member: {
         Args: {
           member_email: string

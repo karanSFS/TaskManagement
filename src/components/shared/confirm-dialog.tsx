@@ -2,7 +2,6 @@
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -10,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 
 export function ConfirmDialog({
   open,
@@ -19,6 +19,7 @@ export function ConfirmDialog({
   confirmLabel,
   pending = false,
   destructive = false,
+  error,
   onConfirm,
 }: {
   open: boolean
@@ -28,6 +29,7 @@ export function ConfirmDialog({
   confirmLabel: string
   pending?: boolean
   destructive?: boolean
+  error?: string
   onConfirm: () => void
 }) {
   return (
@@ -36,19 +38,18 @@ export function ConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
+            type="button"
             variant={destructive ? "destructive" : "default"}
             disabled={pending}
-            onClick={(event) => {
-              event.preventDefault()
-              onConfirm()
-            }}
+            onClick={onConfirm}
           >
             {pending ? "Working…" : confirmLabel}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
