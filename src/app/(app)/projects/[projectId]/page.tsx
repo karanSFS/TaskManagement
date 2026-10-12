@@ -62,7 +62,7 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
         <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricLink label="Open issues" value={project.openIssueCount} hint="Not done in this project" tone="bg-info" href={`/issues?projectId=${project.id}`} />
+        <MetricLink label="Open issues" value={project.openIssueCount} hint="Not done in this project" tone="bg-info" href={`/projects/${project.id}/issues`} />
         <MetricLink label="Done" value={project.doneIssueCount} hint="Completed in this project" tone="bg-success" />
         <MetricLink label="Members" value={project.memberCount} hint={`${roleLabel(project.role)} · lead ${project.leadName}`} tone="bg-primary" href={`/projects/${project.id}/members`} />
       </div>
@@ -72,7 +72,7 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
           <h2 className="text-sm font-medium">Recent issues</h2>
           <div className="flex items-center gap-3 text-sm font-medium">
             {totalIssues > 0 ? (
-              <Link href={`/issues?projectId=${project.id}`} className="text-muted-foreground hover:underline">
+              <Link href={`/projects/${project.id}/issues`} className="text-muted-foreground hover:underline">
                 View all
               </Link>
             ) : null}

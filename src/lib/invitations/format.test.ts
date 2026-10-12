@@ -18,10 +18,10 @@ describe("invitation copy", () => {
     assert.match(message.subject, /Birthflow/)
     assert.match(message.text, /Karan/)
     assert.match(message.text, /Member/)
-    assert.match(message.text, /https:\/\/fixtask.example\/invitations\/11111111-1111-4111-8111-111111111111/)
+    assert.match(message.text, /https:\/\/fixtask.example\/join\/11111111-1111-4111-8111-111111111111/)
     assert.match(message.html, /Review invitation/)
-    assert.match(message.html, /#4f46e5/)
-    assert.match(message.html, /href="https:\/\/fixtask.example\/invitations\/11111111-1111-4111-8111-111111111111"/)
+    assert.match(message.html, /#0f766e/)
+    assert.match(message.html, /href="https:\/\/fixtask.example\/join\/11111111-1111-4111-8111-111111111111"/)
   })
 
   it("escapes project names in the email", () => {

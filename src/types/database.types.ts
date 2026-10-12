@@ -844,6 +844,7 @@ export type Database = {
         }
         Returns: Json
       }
+      invitation_landing: { Args: { target_token: string }; Returns: Json }
       invitation_preview: { Args: { target_token: string }; Returns: Json }
       project_issue_counts: {
         Args: never
@@ -866,8 +867,36 @@ export type Database = {
           issue_count: number
         }[]
       }
+      report_issue_groups_between: {
+        Args: { target_project_id?: string; range_from?: string; range_to?: string }
+        Returns: {
+          group_kind: string
+          group_name: string
+          group_order: number
+          issue_count: number
+        }[]
+      }
+      report_projects_between: {
+        Args: { target_project_id?: string; range_from?: string; range_to?: string }
+        Returns: {
+          project_name: string
+          open_count: number
+          done_count: number
+        }[]
+      }
       report_sprints: {
         Args: { target_project_id?: string }
+        Returns: {
+          done_count: number
+          open_count: number
+          project_key: string
+          sprint_id: string
+          sprint_name: string
+          sprint_status: string
+        }[]
+      }
+      report_sprints_between: {
+        Args: { target_project_id?: string; range_from?: string; range_to?: string }
         Returns: {
           done_count: number
           open_count: number

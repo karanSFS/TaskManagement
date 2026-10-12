@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { z } from "zod"
 
 import { actionError } from "@/lib/actions/result"
-import { safeNextPath, type ActionState } from "@/lib/auth/paths"
+import { isRecoveryAmr, safeNextPath, type ActionState } from "@/lib/auth/paths"
 import { getCurrentUser } from "@/lib/auth/session"
 import { AppError } from "@/lib/errors/app-error"
 import { updateProfileName } from "@/lib/services/profile.service"
@@ -138,12 +139,10 @@ export async function resetPassword(values: ResetPasswordValues): Promise<Action
   }
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getClaims()
 
-  if (!user) {
-    return { error: "This reset link is invalid or has expired. Request a new one." }
+  if (!isRecoveryAmr(data?.claims.amr)) {
+    return { error: "Open the reset link from your email before choosing a new password." }
   }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
@@ -194,4 +193,12 @@ export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect("/login")
+}
+
+export async function switchAccount(nextPath: string, email: string) {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  const params = new URLSearchParams({ next: safeNextPath(nextPath) })
+  if (z.email().safeParse(email).success) params.set("email", email)
+  redirect(`/login?${params}`)
 }

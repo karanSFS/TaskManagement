@@ -1,11 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { createContext, Suspense, use, useContext, useState, type ReactNode } from "react"
-import { Loader2 } from "lucide-react"
+import { createContext, Suspense, use, useContext, useState, useTransition, type ReactNode } from "react"
+import { Loader2, Maximize2 } from "lucide-react"
 
+import { CommentSection } from "@/components/issues/comment-section"
+import { ReopenIssue } from "@/components/issues/reopen-issue"
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
-import { IssueEditor } from "@/components/issues/issue-editor"
+import {
+  CopyLinkButton,
+  InlineDescription,
+  InlineTitle,
+  IssueChangedProvider,
+  IssueDetailsPanel,
+  IssueValuesProvider,
+} from "@/components/issues/issue-inline"
 import { FormSheet } from "@/components/shared/form-dialog"
 import { LinkPending, usePromisePending } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
@@ -21,6 +30,7 @@ const OpenIssueContext = createContext<{ open: (issueId: string) => void; pendin
 
 export function IssueDrawerProvider({ children }: { children: ReactNode }) {
   const [issueId, setIssueId] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
   const [requestState, setRequestState] = useState<{ id: string | null; promise: Promise<DrawerData> | null }>({
     id: null,
     promise: null,
@@ -34,6 +44,11 @@ export function IssueDrawerProvider({ children }: { children: ReactNode }) {
   const request = requestState.promise
   const pending = usePromisePending(request)
 
+  function reload() {
+    if (!issueId) return
+    startTransition(() => setRequestState({ id: issueId, promise: loadIssueDrawer(issueId) }))
+  }
+
   return (
     <OpenIssueContext.Provider value={{ open: setIssueId, pendingId: pending ? issueId : null }}>
       {children}
@@ -41,13 +56,16 @@ export function IssueDrawerProvider({ children }: { children: ReactNode }) {
         <Suspense
           fallback={
             <FormSheet open title="Issue" description="Loading this issue." onOpenChange={(next) => { if (!next) setIssueId(null) }}>
-              <p className="text-sm text-muted-foreground" role="status">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
                 Loading issue…
               </p>
             </FormSheet>
           }
         >
-          <LoadedDrawer request={request} onClose={() => setIssueId(null)} />
+          <IssueChangedProvider onChanged={reload}>
+            <LoadedDrawer request={request} onClose={() => setIssueId(null)} />
+          </IssueChangedProvider>
         </Suspense>
       ) : null}
     </OpenIssueContext.Provider>
@@ -92,7 +110,7 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
     )
   }
   if (!("issue" in data)) return null
-  const { issue } = data
+  const { issue, userId } = data
   const key = issueKey(issue.projectKey, issue.number)
 
   return (
@@ -101,26 +119,14 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
-      title={issue.title}
-      description={`${key} · ${issue.projectName}`}
+      title={key}
+      description={issue.projectArchived ? `${issue.projectName} · archived, read-only` : issue.projectName}
       className="data-[side=right]:sm:max-w-2xl"
     >
-      <div className="flex items-center justify-between gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/issues/${issue.id}`}>
-            <LinkPending />
-            Open full page
-          </Link>
-        </Button>
-        {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={key} /> : null}
-      </div>
-      <IssueEditor
+      <IssueValuesProvider
         issueId={issue.id}
-        types={data.types}
-        statuses={data.statuses}
-        priorities={data.priorities}
-        members={issue.members}
-        defaultValues={{
+        canEdit={issue.canEdit && !issue.projectArchived}
+        initial={{
           title: issue.title,
           description: issue.description,
           issueTypeId: issue.typeId,
@@ -129,8 +135,74 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
           assigneeId: issue.assigneeId,
           dueDate: issue.dueDate,
         }}
-        onSaved={onClose}
-      />
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/issues/${issue.id}`} onClick={onClose}>
+              <LinkPending />
+              <Maximize2 />
+              Open full page
+            </Link>
+          </Button>
+          <CopyLinkButton path={`/issues/${issue.id}`} />
+          {issue.canDelete && !issue.projectArchived ? (
+            <span className="ml-auto">
+              <DeleteIssueButton issueId={issue.id} issueKey={key} onDeleted={onClose} />
+            </span>
+          ) : null}
+        </div>
+
+        <InlineTitle />
+
+        <div className="rounded-xl border bg-muted/20 p-3">
+          <IssueDetailsPanel
+            types={data.types}
+            statuses={data.statuses}
+            priorities={data.priorities}
+            members={issue.members}
+            currentUserId={userId}
+            reporterName={issue.reporterName}
+            createdAt={issue.createdAt}
+            updatedAt={issue.updatedAt}
+          />
+        </div>
+
+        <InlineDescription />
+
+        <ReopenIssue
+          issueId={issue.id}
+          statuses={data.statuses}
+          assigneeName={issue.members.find((member) => member.id === issue.assigneeId)?.name}
+        />
+
+        {issue.labels.length > 0 || issue.subtasks.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {[
+              issue.labels.length > 0 ? `Labels: ${issue.labels.map((label) => label.name).join(", ")}` : null,
+              issue.subtasks.length > 0 ? `${issue.subtasks.length} ${issue.subtasks.length === 1 ? "subtask" : "subtasks"}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            {" · "}
+            <Link href={`/issues/${issue.id}`} className="font-medium text-primary hover:underline" onClick={onClose}>
+              manage on the full page
+            </Link>
+          </p>
+        ) : null}
+
+        <section className="grid gap-3">
+          <h2 className="text-sm font-semibold">
+            Comments {issue.comments.length > 0 ? <span className="text-muted-foreground">({issue.comments.length})</span> : null}
+          </h2>
+          <CommentSection
+            issueId={issue.id}
+            currentUserId={userId}
+            comments={issue.comments}
+            canComment={!issue.projectArchived}
+            mentionNames={issue.members.filter((member) => member.id !== userId).map((member) => member.name)}
+          />
+        </section>
+      </IssueValuesProvider>
     </FormSheet>
   )
 }

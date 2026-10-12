@@ -20,14 +20,17 @@ export function LabelEditor({
   issueId,
   labels,
   projectLabels,
+  readOnly = false,
 }: {
   issueId: string
   labels: { id: string; name: string; color: string }[]
   projectLabels: { id: string; name: string; color: string }[]
+  readOnly?: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const attached = new Set(labels.map((label) => label.id))
+  const shown = readOnly ? labels : projectLabels
   const form = useForm<LabelValues>({
     resolver: zodResolver(labelNameSchema),
     defaultValues: { name: "" },
@@ -43,15 +46,25 @@ export function LabelEditor({
   return (
     <section className="grid min-w-0 gap-2">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">Labels</h2>
-        <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
-          New label
-        </RevealButton>
+        <h2 className="text-sm font-semibold">Labels</h2>
+        {readOnly ? null : (
+          <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
+            New label
+          </RevealButton>
+        )}
       </div>
       <div className="flex flex-wrap gap-1">
-        {projectLabels.length === 0 ? <p className="text-sm text-muted-foreground">No labels yet.</p> : null}
-        {projectLabels.map((label) => {
+        {shown.length === 0 ? <p className="text-sm text-muted-foreground">No labels yet.</p> : null}
+        {shown.map((label) => {
           const on = attached.has(label.id)
+          const style = { borderColor: label.color, background: on ? label.color : "transparent", color: on ? "white" : "inherit" }
+          if (readOnly) {
+            return (
+              <span key={label.id} className="max-w-full truncate rounded-md border px-2 py-1 text-xs" title={label.name} style={style}>
+                {label.name}
+              </span>
+            )
+          }
           return (
             <button
               key={label.id}
@@ -60,7 +73,7 @@ export function LabelEditor({
               aria-pressed={on}
               className="max-w-full truncate rounded-md border px-2 py-1 text-xs"
               title={label.name}
-              style={{ borderColor: label.color, background: on ? label.color : "transparent", color: on ? "white" : "inherit" }}
+              style={style}
               onClick={() => toggle(label.id, on)}
             >
               {label.name}

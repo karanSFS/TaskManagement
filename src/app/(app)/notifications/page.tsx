@@ -1,14 +1,17 @@
+import Form from "next/form"
 import Link from "next/link"
 import { Suspense } from "react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { NotificationInbox } from "@/components/notifications/notification-inbox"
-import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
+import { filterFieldClass } from "@/components/shared/field-styles"
 import { ListSkeleton } from "@/components/shared/page-skeleton"
+import { SegmentedLinks } from "@/components/shared/segmented-links"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
-import { isNotificationKind, notificationLabel } from "@/lib/notifications/format"
-import { listNotifications } from "@/lib/services/notification.service"
+import { isNotificationKind, notificationKinds, notificationLabel } from "@/lib/notifications/format"
+import { countUnreadNotifications, listNotifications } from "@/lib/services/notification.service"
+import { cn } from "@/lib/utils"
 
 export const metadata = { title: "Notifications" }
 
@@ -32,51 +35,57 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxSearch> }) {
   const unread = params.view === "unread"
   const kind = params.kind && isNotificationKind(params.kind) ? params.kind : undefined
   const page = Number(params.page ?? "1")
-  const result = await listNotifications(user.id, page, { unread, kind })
+  const [result, unreadCount] = await Promise.all([
+    listNotifications(user.id, page, { unread, kind }),
+    countUnreadNotifications(user.id, kind),
+  ])
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize))
-  const unreadShown = unread ? result.total : result.items.filter((item) => !item.readAt).length
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button asChild variant={unread ? "ghost" : "outline"} size="sm">
-          <Link href={inboxHref(false, 1, kind)}>All</Link>
-        </Button>
-        <Button asChild variant={unread ? "outline" : "ghost"} size="sm">
-          <Link href={inboxHref(true, 1, kind)}>Unread{unreadShown > 0 ? ` · ${unreadShown}` : ""}</Link>
-        </Button>
-        <FilterDrawer action="/notifications" title="Filter notifications" activeCount={kind ? 1 : 0}>
+        <SegmentedLinks
+          label="Notification view"
+          items={[
+            { href: inboxHref(false, 1, kind), label: "All", active: !unread },
+            { href: inboxHref(true, 1, kind), label: unreadCount > 0 ? `Unread ${unreadCount}` : "Unread", active: unread },
+          ]}
+        />
+        <Form action="/notifications" replace scroll={false} className="flex min-w-0 items-center gap-2">
           {unread ? <input type="hidden" name="view" value="unread" /> : null}
-          <FilterField label="Type">
-            <select name="kind" defaultValue={kind ?? ""} className={filterFieldClass}>
+          <label className="min-w-0">
+            <span className="sr-only">Type</span>
+            <select name="kind" defaultValue={kind ?? ""} className={cn(filterFieldClass, "h-8 w-auto max-w-52")}>
               <option value="">All types</option>
-              <option value="assigned">{notificationLabel("assigned")}</option>
-              <option value="mentioned">{notificationLabel("mentioned")}</option>
-              <option value="commented">{notificationLabel("commented")}</option>
-              <option value="issue_updated">{notificationLabel("issue_updated")}</option>
-              <option value="project_member_added">{notificationLabel("project_member_added")}</option>
-              <option value="sprint_changed">{notificationLabel("sprint_changed")}</option>
-              <option value="project_invited">{notificationLabel("project_invited")}</option>
-              <option value="invitation_accepted">{notificationLabel("invitation_accepted")}</option>
-              <option value="invitation_rejected">{notificationLabel("invitation_rejected")}</option>
-              <option value="invitation_expired">{notificationLabel("invitation_expired")}</option>
-              <option value="invitation_revoked">{notificationLabel("invitation_revoked")}</option>
+              {notificationKinds.map((item) => (
+                <option key={item} value={item}>{notificationLabel(item)}</option>
+              ))}
             </select>
-          </FilterField>
-        </FilterDrawer>
+          </label>
+          <Button type="submit" size="sm" variant="outline">Apply</Button>
+        </Form>
+        {kind ? (
+          <Link href={inboxHref(unread, 1)} replace scroll={false} className="text-xs font-medium text-primary hover:underline">
+            Clear type
+          </Link>
+        ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
         {result.total} {result.total === 1 ? "notification" : "notifications"}
       </p>
-      <NotificationInbox items={result.items} unread={unread} />
+      <NotificationInbox items={result.items} unread={unread} hasUnread={unreadCount > 0} />
       {pages > 1 ? (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center justify-end gap-2">
+          <p className="mr-auto text-xs text-muted-foreground">Page {result.page} of {pages}</p>
           {result.page > 1 ? (
-            <Link href={inboxHref(unread, result.page - 1, kind)} className="underline">Previous</Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={inboxHref(unread, result.page - 1, kind)}>Previous</Link>
+            </Button>
           ) : null}
-          <span className="text-muted-foreground">Page {result.page} of {pages}</span>
           {result.page < pages ? (
-            <Link href={inboxHref(unread, result.page + 1, kind)} className="underline">Next</Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={inboxHref(unread, result.page + 1, kind)}>Next</Link>
+            </Button>
           ) : null}
         </div>
       ) : null}

@@ -18,13 +18,13 @@ import { Input } from "@/components/ui/input"
 import { signUp } from "@/lib/actions/auth"
 import { signupSchema, type SignupValues } from "@/lib/validations/auth"
 
-export function SignupForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
+export function SignupForm({ nextPath = "/dashboard", defaultEmail = "" }: { nextPath?: string; defaultEmail?: string }) {
   const [pending, startTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const form = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { fullName: "", email: defaultEmail, password: "", confirmPassword: "" },
   })
 
   function onSubmit(values: SignupValues) {

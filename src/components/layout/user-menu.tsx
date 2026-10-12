@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { LogOut, Settings, UserRound } from "lucide-react"
+import { LogOut, Settings } from "lucide-react"
 
 import { signOut } from "@/lib/actions/auth"
 import { userInitials } from "@/lib/auth/user"
@@ -41,10 +41,6 @@ export function UserMenu({ user }: UserMenuProps) {
           <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => router.push("/settings")}>
-          <UserRound />
-          Profile
-        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => router.push("/settings")}>
           <Settings />
           Settings

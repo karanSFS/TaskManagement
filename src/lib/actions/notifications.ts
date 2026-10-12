@@ -1,15 +1,15 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { unstable_rethrow } from "next/navigation"
 
 import { actionError } from "@/lib/actions/result"
 import { type ActionState } from "@/lib/auth/paths"
 import { getCurrentUser } from "@/lib/auth/session"
-import { AppError } from "@/lib/errors/app-error"
 import { markAllNotificationsRead, markNotificationRead } from "@/lib/services/notification.service"
 
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {
-  if (!(error instanceof AppError)) throw error
+  unstable_rethrow(error)
   return actionError(error, operation, userId, resourceId)
 }
 

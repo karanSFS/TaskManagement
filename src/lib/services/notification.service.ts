@@ -66,6 +66,20 @@ export async function listNotifications(
   }
 }
 
+export async function countUnreadNotifications(userId: string, kind?: string) {
+  const supabase = await createClient()
+  let query = supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("read_at", null)
+  if (kind) query = query.eq("kind", kind)
+
+  const { count, error } = await query
+  if (error || count === null) throw new DatabaseError("Could not load notifications.")
+  return count
+}
+
 export async function listNotificationPreview(userId: string) {
   const supabase = await createClient()
   const [list, unread] = await Promise.all([

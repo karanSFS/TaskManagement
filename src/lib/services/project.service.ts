@@ -6,6 +6,7 @@ import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
 import { ValidationError } from "@/lib/errors/validation-error"
 import { isProjectRole } from "@/lib/projects/format"
+import { discardAttachmentFiles, listProjectAttachmentPaths } from "@/lib/services/attachment.service"
 import { createClient } from "@/lib/supabase/server"
 import type { CreateProjectValues, ProjectRole, UpdateProjectValues } from "@/lib/validations/project"
 
@@ -89,6 +90,14 @@ export function raiseProjectWriteError(message: string): never {
 
   if (message.includes("already a member")) {
     throw new AppError("MEMBER_EXISTS", "That account is already a member", 409)
+  }
+
+  if (message.includes("Archived projects are read-only")) {
+    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before changing its settings.", 422)
+  }
+
+  if (message.includes("Too many invitations")) {
+    throw new AppError("RATE_LIMITED", "Too many invitations. Wait a while and try again.", 429)
   }
 
   if (message.includes("Archived projects cannot take new members")) {
@@ -176,6 +185,21 @@ const getIssueCounts = cache(async () => {
   }
 
   return new Map((data ?? []).map((row) => [row.project_id, { open: row.open_count, done: row.done_count }]))
+})
+
+export type NavProject = { id: string; name: string; key: string; icon: string | null; archived: boolean }
+
+export const listNavProjects = cache(async (): Promise<NavProject[]> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("projects").select("id, name, key, icon, archived_at").order("name")
+  if (error) throw new DatabaseError("Could not load projects.")
+  return (data ?? []).map((project) => ({
+    id: project.id,
+    name: project.name,
+    key: project.key,
+    icon: project.icon,
+    archived: project.archived_at !== null,
+  }))
 })
 
 export const getProjects = cache(async (userId: string): Promise<ProjectSummary[]> => {
@@ -486,6 +510,7 @@ export async function deleteArchivedProjectRecord(userId: string, projectId: str
     throw new AppError("PROJECT_NOT_ARCHIVED", "Archive the project before deleting it.", 409)
   }
 
+  await discardAttachmentFiles(await listProjectAttachmentPaths(projectId))
   const { error } = await supabase.from("projects").delete().eq("id", projectId)
   if (error) raiseProjectWriteError(error.message)
 

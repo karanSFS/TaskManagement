@@ -6,6 +6,7 @@ import { AuthorizationError } from "@/lib/errors/authorization-error"
 import { DatabaseError } from "@/lib/errors/database-error"
 import { NotFoundError } from "@/lib/errors/not-found-error"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
+import { discardAttachmentFiles, listIssueAttachmentPaths } from "@/lib/services/attachment.service"
 import { createClient } from "@/lib/supabase/server"
 import { myWorkSorts, myWorkViews, type CreateIssueValues, type UpdateIssueValues } from "@/lib/validations/issue"
 
@@ -86,6 +87,7 @@ export type BoardCard = {
   title: string
   priority: string
   assigneeName: string | null
+  dueDate: string | null
   statusId: string
   sprintId: string | null
   sprintName: string | null
@@ -98,7 +100,7 @@ export type BoardColumn = {
   issues: BoardCard[]
 }
 
-export type BoardSprint = { id: string; name: string }
+export type BoardSprint = { id: string; name: string; status: string }
 
 export type BoardData = {
   projectId: string
@@ -109,6 +111,8 @@ export type BoardData = {
   shown: number
   columns: BoardColumn[]
   sprints: BoardSprint[]
+  activeSprint: BoardSprint | null
+  scope: "all" | "sprint"
 }
 
 export type IssueComment = {
@@ -169,8 +173,8 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 }
 
 function raiseIssueWriteError(message: string): never {
-  if (message.includes("Archived projects cannot take new issues")) {
-    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before filing new issues.", 422)
+  if (message.includes("Archived projects cannot take new issues") || message.includes("Archived projects are read-only")) {
+    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before making changes.", 422)
   }
   if (message.includes("Label and issue must belong to the same project")) {
     throw new AppError("INVALID_LABEL", "That label belongs to a different project.", 422)
@@ -481,25 +485,6 @@ function assertUserId(userId: string) {
   }
 }
 
-export async function countOverdueIssues() {
-  const catalog = await getIssueCatalog()
-  const openStatusIds = catalog.statuses.filter((status) => status.category !== "done").map((status) => status.id)
-  if (openStatusIds.length === 0) {
-    throw new DatabaseError("Could not load overdue issues.")
-  }
-
-  const supabase = await createClient()
-  const { count, error } = await supabase
-    .from("issues")
-    .select("id", { count: "exact", head: true })
-    .in("status_id", openStatusIds)
-    .not("due_date", "is", null)
-    .lt("due_date", isoDate(0))
-
-  if (error || count === null) throw new DatabaseError("Could not load overdue issues.")
-  return count
-}
-
 function isoDate(offsetDays: number) {
   const date = new Date()
   date.setUTCDate(date.getUTCDate() + offsetDays)
@@ -616,6 +601,11 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   })
   const myRole = (members.data ?? []).find((member) => member.user_id === userId)?.role
   const actorNames = new Map(memberRows.map((member) => [member.id, member.name]))
+  await addSprintNames(
+    supabase,
+    names,
+    (history.data ?? []).flatMap((entry) => (entry.field === "sprint" ? [entry.new_value] : [])),
+  )
 
   return {
     id: issue.id,
@@ -705,7 +695,11 @@ function historySummary(field: string, newValue: string | null, names: Map<strin
   if (field === "type") return `Type set to ${next}`
   if (field === "assignee") return newValue ? `Assigned to ${names.get(newValue) ?? "a former member"}` : "Assignee cleared"
   if (field === "due_date") return newValue ? `Due date set to ${formatDueDate(newValue)}` : "Due date cleared"
-  if (field === "sprint") return newValue ? "Moved to a sprint" : "Removed from the sprint"
+  if (field === "sprint") {
+    if (!newValue) return "Removed from the sprint"
+    const name = names.get(newValue) ?? newValue
+    return isUuid(name) ? "Moved to a sprint" : `Moved to ${name}`
+  }
   return `${field} updated`
 }
 
@@ -753,6 +747,11 @@ export async function listRecentActivity(userId: string): Promise<ActivityItem[]
     if (profiles.error) throw new DatabaseError("Could not load recent activity.")
     for (const profile of profiles.data ?? []) names.set(profile.id, profile.display_name)
   }
+  await addSprintNames(
+    supabase,
+    names,
+    rows.flatMap((row) => (row.field === "sprint" ? [row.new_value] : [])),
+  )
 
   return rows.flatMap((row) => {
     const issue = one(row.issue as ActivityIssue | ActivityIssue[] | null)
@@ -781,13 +780,28 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-const boardLimit = 200
+async function addSprintNames(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  names: Map<string, string>,
+  values: (string | null)[],
+) {
+  const ids = [...new Set(values.filter((value): value is string => Boolean(value && isUuid(value))))]
+  if (ids.length === 0) return
+  const sprints = await supabase.from("sprints").select("id, name").in("id", ids)
+  if (sprints.error) throw new DatabaseError("Could not load sprint names.")
+  for (const sprint of sprints.data ?? []) names.set(sprint.id, sprint.name)
+}
+
+export const boardPageSize = 200
+export const boardMax = 1000
 
 export async function listBoard(
   userId: string,
   projectId: string,
   assignee: "all" | "me" | "unassigned",
   query: string,
+  scope: "all" | "sprint" = "all",
+  limit = boardPageSize,
 ): Promise<BoardData | null> {
   const supabase = await createClient()
   const { data: project, error: projectError } = await supabase
@@ -799,33 +813,38 @@ export async function listBoard(
   if (projectError) throw new DatabaseError("Could not load the board.")
   if (!project) return null
 
-  const catalog = await getIssueCatalog()
+  const [catalog, openSprints] = await Promise.all([
+    getIssueCatalog(),
+    supabase
+      .from("sprints")
+      .select("id, name, status")
+      .eq("project_id", projectId)
+      .neq("status", "completed")
+      .order("name"),
+  ])
+  if (openSprints.error || openSprints.data === null) throw new DatabaseError("Could not load the board.")
+  const activeSprint = openSprints.data.find((sprint) => sprint.status === "active") ?? null
+  const scoped = scope === "sprint" && activeSprint !== null
+
   let request = supabase
     .from("issues")
     .select(
-      "id, issue_number, title, status_id, sprint_id, priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(name)",
+      "id, issue_number, title, status_id, sprint_id, due_date, priorities!issues_priority_id_fkey(name), assignee:profiles!issues_assignee_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(name)",
       { count: "exact" },
     )
     .eq("project_id", projectId)
     .order("updated_at", { ascending: false })
-    .limit(boardLimit)
+    .limit(Math.min(boardMax, Math.max(boardPageSize, limit)))
 
   const needle = query.trim().replace(/[%_\\]/g, "")
   if (needle) request = request.ilike("title", `%${needle}%`)
   if (assignee === "me") request = request.eq("assignee_id", userId)
   if (assignee === "unassigned") request = request.is("assignee_id", null)
+  if (scoped) request = request.eq("sprint_id", activeSprint.id)
 
-  const [issues, openSprints] = await Promise.all([
-    request,
-    supabase
-      .from("sprints")
-      .select("id, name")
-      .eq("project_id", projectId)
-      .neq("status", "completed")
-      .order("name"),
-  ])
+  const issues = await request
 
-  if (issues.error || issues.data === null || issues.count === null || openSprints.error || openSprints.data === null) {
+  if (issues.error || issues.data === null || issues.count === null) {
     throw new DatabaseError("Could not load the board.")
   }
 
@@ -837,6 +856,7 @@ export async function listBoard(
       title: issue.title,
       priority: one(issue.priorities as NamedEmbed)?.name ?? "Unknown",
       assigneeName: one(issue.assignee as NameEmbed)?.display_name ?? null,
+      dueDate: issue.due_date,
       statusId: issue.status_id,
       sprintId: issue.sprint_id,
       sprintName: sprint?.name ?? null,
@@ -851,6 +871,8 @@ export async function listBoard(
     total: issues.count,
     shown: cards.length,
     sprints: openSprints.data,
+    activeSprint,
+    scope: scoped ? "sprint" : "all",
     columns: catalog.statuses.map((status) => ({
       id: status.id,
       name: status.name,
@@ -882,6 +904,58 @@ export async function changeIssueStatus(userId: string, issueId: string, statusI
   return data[0]
 }
 
+export async function reopenIssue(userId: string, issueId: string, note: string) {
+  const supabase = await createClient()
+  const { data: issue, error: readError } = await supabase
+    .from("issues")
+    .select("id, status_id")
+    .eq("id", issueId)
+    .maybeSingle()
+
+  if (readError) throw new DatabaseError("Could not reopen this issue.")
+  if (!issue) throw new NotFoundError("ISSUE_NOT_FOUND", "Issue could not be found.")
+
+  const catalog = await getIssueCatalog()
+  const current = catalog.statuses.find((status) => status.id === issue.status_id)
+  if (current?.category !== "done") {
+    throw new AppError("INVALID_ISSUE", "Only a finished issue can be reopened.", 422)
+  }
+
+  const nextStatus = catalog.statuses.find((status) => status.slug === "todo")
+    ?? catalog.statuses.find((status) => status.category === "todo")
+  if (!nextStatus) throw new DatabaseError("Could not reopen this issue.")
+
+  const { data: updated, error } = await supabase
+    .from("issues")
+    .update({ status_id: nextStatus.id })
+    .eq("id", issueId)
+    .eq("status_id", issue.status_id)
+    .select("id")
+
+  if (error) raiseIssueWriteError(error.message)
+  if (!updated?.length) {
+    throw new AppError("INVALID_ISSUE", "Only a finished issue can be reopened.", 422)
+  }
+
+  const { error: commentError } = await supabase.from("comments").insert({
+    issue_id: issueId,
+    author_id: userId,
+    body: note,
+  })
+
+  if (commentError) {
+    const reverted = await supabase
+      .from("issues")
+      .update({ status_id: issue.status_id })
+      .eq("id", issueId)
+      .eq("status_id", nextStatus.id)
+    if (reverted.error) {
+      throw new AppError("INVALID_ISSUE", "The issue is open again, but the note could not be saved. Add it as a comment.", 500)
+    }
+    raiseIssueWriteError(commentError.message)
+  }
+}
+
 export async function createIssue(userId: string, input: CreateIssueValues) {
   const assigneeId = input.assigneeId || null
   await assertAssignee(input.projectId, assigneeId)
@@ -911,6 +985,7 @@ export async function createIssue(userId: string, input: CreateIssueValues) {
 
 export async function deleteIssue(issueId: string) {
   const supabase = await createClient()
+  await discardAttachmentFiles(await listIssueAttachmentPaths(issueId))
   const { data, error } = await supabase.from("issues").delete().eq("id", issueId).select("id, project_id")
 
   if (error) raiseIssueWriteError(error.message)

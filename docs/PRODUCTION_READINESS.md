@@ -263,10 +263,12 @@ Agreed 2026-10-12:
 
 Still open in Phase A:
 
-- Storage cleanup when issues or projects are deleted. Supabase blocks SQL deletes on `storage.objects`, so this needs a cleanup queue plus an Edge Function.
-- Hiding the invitation token.
-- Rotating the token on resend.
 - Atomic label and attachment RPCs.
+
+Storage cleanup and invitation limits (`20261012100000_launch_guards.sql`):
+
+- Deleting an attachment queues its storage path. Deleting an issue or an archived project also removes the files the current person is allowed to delete. Files they cannot delete stay in the queue for `supabase/functions/storage-cleanup`, which must be deployed with the platform service role. The function is not part of the Next.js app.
+- Each person can send or resend at most 20 invitations per hour. Updating a saved invitation without changing its token does not count.
 
 **Phase C, first pass (done):**
 
@@ -281,9 +283,100 @@ Still open in Phase A:
 - Board column and drag overlay width.
 - Issue side panel now shows from `lg` instead of `xl`.
 
-Still open in Phase C:
+**Phase C, overflow (done):**
 
-- Card layout for the Issues and My Work tables on phones.
-- Board scroll hint.
-- Removing the shell's `overflow-x-hidden`.
-- Automated width checks.
+- Issues and My Work use stacked rows, so the old wide tables no longer force a sideways page scroll on phones.
+- The board fades the edge and says “Swipe sideways for more columns” when columns sit past the viewport.
+- The app shell no longer uses `overflow-x-hidden`. The board keeps its own horizontal scroll. `src/lib/issues/board-scroll.test.ts` checks the fade math and that the shell does not clip the page.
+
+**Phase D, foundation (done):**
+
+- Slate and teal colour tokens, light and dark. A Comfortable or Compact density setting lives in Settings → Appearance.
+- Project-first navigation. The sidebar lists projects and expands the current one. Each project has Overview, Board, Backlog, Sprints, Issues, Reports, Members, and Settings tabs under `/projects/<id>/…`. The old `/board`, `/backlog`, and `/sprints` addresses forward to the last project you opened.
+- Archived projects show a read-only banner with Restore, and hide create, invite, and plan actions.
+- Every issue, sprint, and project change refreshes the whole signed-in app, so counts stop going stale.
+- Project delete works (`20261012060000_allow_project_delete.sql`).
+
+**Phase D, invitations (done):**
+
+- Email links now open `/join/<token>`, which works signed out (`20261012070000_invitation_landing.sql`). It shows who invited you, the project, and the role, then offers "Create account to accept" or "Sign in to accept" with the email prefilled. Old `/invitations/<token>` links forward there when signed out.
+- Signed in with the wrong email: the card explains it and offers Switch account.
+- Decline asks for confirmation. Accepting opens the project board.
+- Pending invitations appear as cards on Home, so people who confirm their email after signing up still find them.
+- The Invitations page splits "Waiting for you" from past invitations.
+- The Members page has an "Invite people" button next to the member count, and a "Waiting to accept" list with Copy link, Resend email, and a confirmed Cancel. Older invitations are folded under Invitation history.
+
+**Phase D, Home and Projects (done):**
+
+- Home has a plain header, one row of stats (Assigned to you, Due this week, Overdue, Open in your projects), "Assigned to you" first, then Coming up, Active sprints, and Recent activity on the side, and active project tiles last.
+- Home counts come from the same query as My Work, so the numbers match (Phase B). The cross-project `countOverdueIssues` is gone.
+- When every project is archived, Home says so and offers Restore on each. A brand-new account sees a three-step getting-started card.
+- Projects is a compact list with Active, Archived, and All tabs, an inline search, and a sort. It opens on Archived when nothing is active.
+- `filterFieldClass` moved out of the client-only filter drawer into `components/shared/field-styles.ts`. Server pages were importing it across the client boundary, which could leave filter inputs unstyled.
+
+**Phase D, issue detail, drawer, and board (done):**
+
+- The "Edit issue" side panel is gone. Title and description are edited in place. Status, assignee (with "Assign to me"), priority, type, and due date save as soon as they change, and an error puts the old value back.
+- The issue page has a breadcrumb back to the project board, Copy link, and Delete. Description, subtasks, links, attachments, and Comments / History tabs sit in the main column. Details and labels sit in a sticky side column.
+- Comments use an always-visible box. ⌘/Ctrl + Enter posts.
+- The drawer uses the same inline editing and shows comments. It stays open while you edit and reloads its own data after each change, without a loading flash. Deleting from the drawer closes it.
+- The board has a scope switch (All issues or the active sprint), an Anyone / Mine / Unassigned switch, and inline search. Cards are clickable and draggable across their whole surface, show key, priority, due date, and assignee, and open with Enter. Space picks a card up from the keyboard. The first column has "+ Add issue". The sprint picker moved off the cards; sprint planning lives in the Backlog.
+- Archived projects are read-only in the app: the board can't drag, and issues can't be edited.
+
+**Phase D, backlog and sprints (done):**
+
+- The backlog lists issues that are not in a sprint, with Open, Done, and All switches, inline search, and a sort. Each row has an Add to sprint menu, so the old wide select no longer stretches the row.
+- Sprints are grouped into Active, Planned, and Completed. The active sprint links to the sprint board. Planned sprints can be started, edited, or deleted by an owner or admin. Deleting a planned sprint returns its issues to the backlog.
+- Issues already in a sprint can move to another open sprint or back to the backlog.
+- Archived projects hide planning actions. Completing the sprint that is already running still works.
+
+**Phase D, Issues and My Work lists (done):**
+
+- Both lists are stacked rows instead of a 720px-wide table. The key opens the issue page, the title opens the drawer, and status, priority, assignee, and dates wrap underneath.
+- All issues has Anyone, Mine, and Unassigned in the toolbar, with search beside them. Project, status, priority, type, and sort stay in Filters.
+- My Work uses the same row. Assigned, Reported, Due soon, and Overdue are switches that show their counts.
+
+**Phase D, notifications, settings, and sign-in (done):**
+
+- Notifications use All and Unread switches. The Unread count is the real total, including items on other pages. Type is a menu in the toolbar. Mark all read only shows when something is unread, and each row can be marked read without leaving the list.
+- Settings shows the profile, appearance, links to notifications and projects, and Sign out. The account menu no longer lists Profile and Settings as two items that open the same page.
+- Sign-in and sign-up say which email an invitation expects, and the password pages use the same footer style as the other auth screens.
+
+**Phase D, archived writes and sprint history (done):**
+
+- The database now rejects edits on an archived project: issues, comments, labels, links, attachments, project settings, and sprint planning. Restoring the project, changing or removing members, completing the sprint that is already running, and deleting the project still work (`20261012080000_archived_readonly_and_sprint_history.sql`). Applied to the hosted database on 2026-10-12.
+- Issue history stores the sprint name. Older rows that still have a sprint id are shown with the name when that sprint still exists.
+
+**Phase B, sign-in redirects (done):**
+
+- A signed-out visit keeps the path and the query string in `next`, so a board link such as `?scope=sprint` comes back after sign-in.
+- Someone who is already signed in and opens `/login?next=…` lands on that page instead of always going to Home.
+- `/reset-password` only stays open for a recovery session from the email link. A normal sign-in is sent to Home, and a signed-out visit is sent to the forgot-password page. The password update itself checks the same recovery claim.
+
+**Phase B, search and attachments (done):**
+
+- Search ignores a slow reply once you have typed something newer, shows Searching while it runs, and says search failed instead of pretending there are no issues.
+- If attaching a file fails after the upload, the file is removed from storage. Removing a file asks for confirmation.
+
+**Reopen a finished issue (done):**
+
+- When an issue is Done, the issue page and the drawer ask you to check the work. If it is still broken, reopen it with a note about what you checked. The issue goes back to To Do, and the note stays on the ticket as a comment. The status change stays in History.
+
+**Invitation resend (done in code):**
+
+- Sending an invitation again replaces the link. The previous `/join` address no longer opens the invitation. The new email and the Copy link button use the new token (`20261012090000_rotate_invitation_token.sql`). Applied to the hosted database on 2026-10-12.
+
+**Launch guards (done in code):**
+
+- Dated reports are counted in SQL (`report_issue_groups_between`, `report_projects_between`, `report_sprints_between`). A long date range no longer fails after 1,000 issues.
+- The board loads 200 issues and offers Show more, up to 1,000. Search still finds older issues.
+- The Members page says when invitation email is not configured. `.env.local.example` lists `BREVO_SMTP_KEY`, `BREVO_SMTP_LOGIN`, and `INVITE_FROM_EMAIL`. The app still starts without them.
+- Unexpected action failures are logged and returned as “Something went wrong. Try again.” Redirects still redirect.
+- Production responses send HSTS. CI runs typecheck, lint, test, and build on push and pull request.
+- A ticket with 50 comments notes that older comments are not listed.
+
+`20261012100000_launch_guards.sql` was applied to the hosted database on 2026-10-12. The app itself is still uncommitted, so the live site does not have these screens yet. The storage cleanup function still has to be deployed before queued files are removed.
+
+Still open from this round:
+
+- Atomic label and attachment RPCs.

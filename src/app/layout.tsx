@@ -35,6 +35,8 @@ export const metadata: Metadata = {
   },
 };
 
+const densityScript = `try{if(localStorage.getItem("fixtask-density")==="compact")document.documentElement.dataset.density="compact"}catch(e){}`
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
@@ -42,7 +44,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-svh bg-background font-sans text-[13.5px] leading-5 text-foreground">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: densityScript }} />
+      </head>
+      <body className="min-h-svh bg-background font-sans text-sm text-foreground">
         <SkipLink />
         <ThemeProvider>
           <QueryProvider>

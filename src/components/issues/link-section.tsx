@@ -25,10 +25,12 @@ export function LinkSection({
   issueId,
   links,
   choices,
+  readOnly = false,
 }: {
   issueId: string
   links: { id: string; type: string; direction: "out" | "in"; issueId: string; number: number; title: string; projectKey: string }[]
   choices: { id: string; number: number; title: string }[]
+  readOnly?: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -39,8 +41,8 @@ export function LinkSection({
   return (
     <section className="grid min-w-0 gap-2">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">Links</h2>
-        {choices.length > 0 ? (
+        <h2 className="text-sm font-semibold">Links</h2>
+        {!readOnly && choices.length > 0 ? (
           <RevealButton type="button" size="sm" variant="outline" onReveal={() => setOpen(true)}>
             Link issue
           </RevealButton>
@@ -59,15 +61,20 @@ export function LinkSection({
                   <LinkPending />
                   {issueKey(link.projectKey, link.number)} {link.title}
                 </Link>
-                <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setRemoveId(link.id)}>
-                  Remove
-                </Button>
+                {readOnly ? null : (
+                  <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setRemoveId(link.id)}>
+                    Remove
+                  </Button>
+                )}
               </li>
             )
           })}
         </ul>
       ) : null}
-      {choices.length > 0 ? (
+      {!readOnly && choices.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Create another issue in this project to link it.</p>
+      ) : null}
+      {!readOnly && choices.length > 0 ? (
         <FormDialog open={open} onOpenChange={setOpen} title="Link issue" description="Connect this issue to another one in the same project." pending={pending}>
         <form
           className="grid gap-3"
@@ -108,9 +115,7 @@ export function LinkSection({
           </div>
         </form>
         </FormDialog>
-      ) : (
-        <p className="text-xs text-muted-foreground">Create another issue in this project to link it.</p>
-      )}
+      ) : null}
       <ConfirmDialog
         open={removeId !== null}
         onOpenChange={(next) => { if (!next) setRemoveId(null) }}

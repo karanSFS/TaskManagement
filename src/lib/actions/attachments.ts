@@ -1,23 +1,17 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { unstable_rethrow } from "next/navigation"
 
 import { actionError } from "@/lib/actions/result"
+import { refreshWorkspace } from "@/lib/actions/revalidate"
 import { type ActionState } from "@/lib/auth/paths"
 import { getCurrentUser } from "@/lib/auth/session"
-import { AppError } from "@/lib/errors/app-error"
 import { createAttachmentUrl, registerAttachment, removeAttachment } from "@/lib/services/attachment.service"
 import { attachmentRegistrationSchema } from "@/lib/validations/attachment"
 
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {
-  if (!(error instanceof AppError)) throw error
+  unstable_rethrow(error)
   return actionError(error, operation, userId, resourceId)
-}
-
-function refreshIssue(issueId: string, projectId: string | null) {
-  revalidatePath(`/issues/${issueId}`)
-  revalidatePath("/issues")
-  if (projectId) revalidatePath(`/projects/${projectId}`)
 }
 
 export async function saveAttachment(values: unknown): Promise<ActionState> {
@@ -28,8 +22,8 @@ export async function saveAttachment(values: unknown): Promise<ActionState> {
   if (!user) return { error: "Sign in to attach a file." }
 
   try {
-    const projectId = await registerAttachment(user.id, parsed.data.issueId, parsed.data.storagePath, parsed.data.fileName)
-    refreshIssue(parsed.data.issueId, projectId)
+    await registerAttachment(user.id, parsed.data.issueId, parsed.data.storagePath, parsed.data.fileName)
+    refreshWorkspace()
     return { success: "File attached." }
   } catch (error) {
     return failure(error, "saveAttachment", user.id, parsed.data.issueId)
@@ -41,8 +35,8 @@ export async function deleteAttachment(issueId: string, attachmentId: string): P
   if (!user) return { error: "Sign in to remove a file." }
 
   try {
-    const projectId = await removeAttachment(user.id, issueId, attachmentId)
-    refreshIssue(issueId, projectId)
+    await removeAttachment(user.id, issueId, attachmentId)
+    refreshWorkspace()
     return { success: "File removed." }
   } catch (error) {
     return failure(error, "deleteAttachment", user.id, attachmentId)

@@ -6,11 +6,15 @@ export type { InvitationMail }
 
 const savedWithoutEmail = "The invitation was saved, but the email could not be sent. Use Resend on the members page."
 
+export function invitationMailConfigured() {
+  return Boolean(process.env.BREVO_SMTP_KEY && process.env.BREVO_SMTP_LOGIN && process.env.INVITE_FROM_EMAIL)
+}
+
 export async function sendInvitationEmail(invite: InvitationMail, origin: string) {
   const key = process.env.BREVO_SMTP_KEY
   const login = process.env.BREVO_SMTP_LOGIN
   const from = process.env.INVITE_FROM_EMAIL
-  if (!key || !login || !from) {
+  if (!invitationMailConfigured() || !key || !login || !from) {
     return "The invitation was saved, but email is not configured. Add the Brevo settings, then use Resend."
   }
 

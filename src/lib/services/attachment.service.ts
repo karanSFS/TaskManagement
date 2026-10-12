@@ -53,8 +53,52 @@ export async function listIssueAttachments(userId: string, issueId: string): Pro
   }))
 }
 
+export async function discardAttachmentFiles(paths: string[]) {
+  const unique = [...new Set(paths.filter(Boolean))]
+  if (unique.length === 0) return
+  const supabase = await createClient()
+  for (let index = 0; index < unique.length; index += 100) {
+    await supabase.storage.from("attachments").remove(unique.slice(index, index + 100))
+  }
+}
+
+export async function listIssueAttachmentPaths(issueId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("attachments").select("storage_path").eq("issue_id", issueId)
+  if (error || data === null) return []
+  return data.map((file) => file.storage_path)
+}
+
+export async function listProjectAttachmentPaths(projectId: string) {
+  const supabase = await createClient()
+  const issues = await supabase.from("issues").select("id").eq("project_id", projectId)
+  if (issues.error || issues.data === null || issues.data.length === 0) return []
+  const ids = issues.data.map((issue) => issue.id)
+  const paths: string[] = []
+  for (let index = 0; index < ids.length; index += 100) {
+    const files = await supabase.from("attachments").select("storage_path").in("issue_id", ids.slice(index, index + 100))
+    if (files.data) paths.push(...files.data.map((file) => file.storage_path))
+  }
+  return paths
+}
+
 export async function registerAttachment(userId: string, issueId: string, storagePath: string, fileName: string) {
   const supabase = await createClient()
+  try {
+    return await insertAttachment(supabase, userId, issueId, storagePath, fileName)
+  } catch (error) {
+    await supabase.storage.from("attachments").remove([storagePath])
+    throw error
+  }
+}
+
+async function insertAttachment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  issueId: string,
+  storagePath: string,
+  fileName: string,
+) {
   const { data: issue, error: issueError } = await supabase
     .from("issues")
     .select("project_id")
@@ -80,11 +124,9 @@ export async function registerAttachment(userId: string, issueId: string, storag
   const size = info.data.size ?? 0
   const mimeType = (info.data.contentType ?? "").split(";")[0]?.trim().toLowerCase() ?? ""
   if (!isAllowedAttachmentType(mimeType)) {
-    await supabase.storage.from("attachments").remove([storagePath])
     throw new AppError("INVALID_ATTACHMENT", "That file type is not allowed.", 422)
   }
   if (size <= 0 || size > maxAttachmentBytes) {
-    await supabase.storage.from("attachments").remove([storagePath])
     throw new AppError("INVALID_ATTACHMENT", "Files must be 50 MB or smaller.", 422)
   }
 
@@ -99,7 +141,9 @@ export async function registerAttachment(userId: string, issueId: string, storag
   })
 
   if (error) {
-    await supabase.storage.from("attachments").remove([storagePath])
+    if (error.message.includes("Archived projects are read-only")) {
+      throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before adding files.", 422)
+    }
     if (error.message.includes("row-level security") || error.message.includes("permission denied")) {
       throw new AuthorizationError("ISSUE_ACCESS_DENIED", "You don't have permission to attach a file here.")
     }
@@ -128,7 +172,12 @@ export async function removeAttachment(userId: string, issueId: string, attachme
     .eq("issue_id", issueId)
     .select("id")
 
-  if (error) throw new DatabaseError("Could not remove the attachment.")
+  if (error) {
+    if (error.message.includes("Archived projects are read-only")) {
+      throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before removing files.", 422)
+    }
+    throw new DatabaseError("Could not remove the attachment.")
+  }
   if (!removed?.length) {
     throw new AuthorizationError("ISSUE_ACCESS_DENIED", "You can only remove files you uploaded.")
   }

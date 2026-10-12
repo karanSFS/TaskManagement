@@ -1,15 +1,5 @@
 "use client"
 
-import {
-  DndContext,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import { GripVertical } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
@@ -19,16 +9,22 @@ import { IssueOpenButton } from "@/components/issues/issue-drawer"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { LinkPending, RevealButton } from "@/components/shared/pending-ui"
 import { PriorityMark } from "@/components/shared/priority-mark"
-import { ProgressMeter, StatusChip, sprintTone } from "@/components/shared/visual"
+import { ProgressMeter, StatusChip } from "@/components/shared/visual"
 import { EditSprintButton } from "@/components/sprints/create-sprint-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { assignIssueToSprint, completeSprint, startSprint } from "@/lib/actions/sprints"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { assignIssueToSprint, completeSprint, deleteSprint, startSprint } from "@/lib/actions/sprints"
+import { projectHref } from "@/lib/config/nav"
 import { issueKey } from "@/lib/projects/format"
 import type { SprintIssue, SprintSummary } from "@/lib/services/sprint.service"
 
-const fieldClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+type SprintOption = { id: string; name: string }
 
 export function BacklogList({
   projectId,
@@ -39,116 +35,43 @@ export function BacklogList({
   projectId: string
   projectKey: string
   issues: SprintIssue[]
-  sprints: { id: string; name: string }[]
+  sprints: SprintOption[]
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
-  function onDragEnd(event: DragEndEvent) {
-    const issueId = String(event.active.id)
-    const overId = event.over ? String(event.over.id) : ""
-    if (!overId.startsWith("sprint:") || pending) return
-    move(issueId, overId.slice("sprint:".length))
-  }
-
-  function move(issueId: string, sprintId: string) {
+  function move(issueId: string, sprintId: string, sprintName: string) {
     startTransition(async () => {
       const result = await assignIssueToSprint(projectId, issueId, sprintId)
       if (result?.error) {
         toast.error(result.error)
         return
       }
-      toast.success(result?.success ?? "Sprint updated.")
+      toast.success(`Added to ${sprintName}.`)
       router.refresh()
     })
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="grid gap-3">
-        {sprints.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            <p className="w-full text-xs text-muted-foreground">Drag an issue onto a sprint, or choose one in the row.</p>
-            {sprints.map((sprint) => (
-              <SprintDrop key={sprint.id} sprint={sprint} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Plan a sprint before these issues can be scheduled.</p>
-        )}
-        <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
-          {issues.map((issue) => (
-            <BacklogRow
-              key={issue.id}
-              projectKey={projectKey}
-              issue={issue}
-              sprints={sprints}
+    <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+      {issues.map((issue) => (
+        <li key={issue.id} className="flex min-w-0 flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center">
+          <IssueLine projectKey={projectKey} issue={issue} />
+          {sprints.length > 0 ? (
+            <MoveMenu
+              label="Add to sprint"
+              title={`Add ${issue.title} to a sprint`}
               pending={pending}
-              onMove={move}
+              options={sprints}
+              onPick={(sprintId) => {
+                const sprint = sprints.find((item) => item.id === sprintId)
+                if (sprint) move(issue.id, sprint.id, sprint.name)
+              }}
             />
-          ))}
-        </ul>
-      </div>
-    </DndContext>
-  )
-}
-
-function SprintDrop({ sprint }: { sprint: { id: string; name: string } }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `sprint:${sprint.id}` })
-  return (
-    <div
-      ref={setNodeRef}
-      className={`max-w-full truncate rounded-full border px-3 py-1 text-xs transition-colors duration-200 ${isOver ? "border-primary bg-primary/10" : "bg-card"}`}
-    >
-      {sprint.name}
-    </div>
-  )
-}
-
-function BacklogRow({
-  projectKey,
-  issue,
-  sprints,
-  pending,
-  onMove,
-}: {
-  projectKey: string
-  issue: SprintIssue
-  sprints: { id: string; name: string }[]
-  pending: boolean
-  onMove: (issueId: string, sprintId: string) => void
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: issue.id, disabled: pending || sprints.length === 0 })
-
-  return (
-    <li ref={setNodeRef} className={`flex flex-wrap items-center gap-3 px-3 py-2.5 ${isDragging ? "opacity-40" : ""}`}>
-      {sprints.length > 0 ? (
-        <button type="button" className="text-muted-foreground" aria-label={`Drag ${issue.title}`} {...attributes} {...listeners}>
-          <GripVertical className="size-3.5" />
-        </button>
-      ) : null}
-      <IssueLine projectKey={projectKey} issue={issue} />
-      {sprints.length > 0 ? (
-        <select
-          className={`${fieldClass} w-full min-w-0 sm:w-44`}
-          aria-label={`Add ${issue.title} to a sprint`}
-          defaultValue=""
-          disabled={pending}
-          onChange={(event) => {
-            const sprintId = event.target.value
-            if (!sprintId) return
-            event.currentTarget.value = ""
-            onMove(issue.id, sprintId)
-          }}
-        >
-          <option value="">Add to sprint</option>
-          {sprints.map((sprint) => (
-            <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
-          ))}
-        </select>
-      ) : null}
-    </li>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -156,19 +79,90 @@ export function SprintList({
   projectId,
   projectKey,
   sprints,
+  canManage,
+  readOnly,
 }: {
   projectId: string
   projectKey: string
   sprints: SprintSummary[]
+  canManage: boolean
+  readOnly: boolean
 }) {
-  const hasActive = sprints.some((sprint) => sprint.status === "active")
-  const ordered = [...sprints].sort((a, b) => sprintRank(a.status) - sprintRank(b.status))
+  const active = sprints.find((sprint) => sprint.status === "active") ?? null
+  const planned = sprints.filter((sprint) => sprint.status === "future")
+  const completed = sprints.filter((sprint) => sprint.status === "completed")
+  const openSprints = sprints
+    .filter((sprint) => sprint.status !== "completed")
+    .map((sprint) => ({ id: sprint.id, name: sprint.name }))
 
   return (
-    <div className="grid gap-4">
-      {ordered.map((sprint) => (
-        <SprintCard key={sprint.id} projectId={projectId} projectKey={projectKey} sprint={sprint} hasActive={hasActive} />
-      ))}
+    <div className="grid gap-6">
+      <section aria-labelledby="active-sprint" className="grid gap-2">
+        <h2 id="active-sprint" className="text-sm font-semibold tracking-tight">Active</h2>
+        {active ? (
+          <SprintCard
+            projectId={projectId}
+            projectKey={projectKey}
+            sprint={active}
+            openSprints={openSprints}
+            canManage={canManage}
+            readOnly={readOnly}
+            blocked={false}
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed px-4 py-5 text-sm text-muted-foreground">
+            No sprint is running. Start a planned sprint when the team is ready to work from the board.
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="planned-sprints" className="grid gap-2">
+        <h2 id="planned-sprints" className="text-sm font-semibold tracking-tight">
+          Planned {planned.length > 0 ? <span className="text-muted-foreground">({planned.length})</span> : null}
+        </h2>
+        {planned.length === 0 ? (
+          <p className="rounded-xl border border-dashed px-4 py-5 text-sm text-muted-foreground">
+            Nothing is planned yet. Plan a sprint, then add issues from the backlog.
+          </p>
+        ) : (
+          <div className="grid gap-3">
+            {planned.map((sprint) => (
+              <SprintCard
+                key={sprint.id}
+                projectId={projectId}
+                projectKey={projectKey}
+                sprint={sprint}
+                openSprints={openSprints}
+                canManage={canManage}
+                readOnly={readOnly}
+                blocked={active !== null}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {completed.length > 0 ? (
+        <details className="grid gap-2">
+          <summary className="cursor-pointer text-sm font-semibold tracking-tight text-muted-foreground hover:text-foreground">
+            Completed ({completed.length})
+          </summary>
+          <div className="mt-2 grid gap-3">
+            {completed.map((sprint) => (
+              <SprintCard
+                key={sprint.id}
+                projectId={projectId}
+                projectKey={projectKey}
+                sprint={sprint}
+                openSprints={[]}
+                canManage={false}
+                readOnly
+                blocked={false}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
     </div>
   )
 }
@@ -177,43 +171,59 @@ function SprintCard({
   projectId,
   projectKey,
   sprint,
-  hasActive,
+  openSprints,
+  canManage,
+  readOnly,
+  blocked,
 }: {
   projectId: string
   projectKey: string
   sprint: SprintSummary
-  hasActive: boolean
+  openSprints: SprintOption[]
+  canManage: boolean
+  readOnly: boolean
+  blocked: boolean
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const done = sprint.issues.filter((issue) => issue.done).length
   const total = sprint.issues.length
-  const dates = formatSprintDates(sprint.startDate, sprint.endDate)
+  const destinations = [
+    ...openSprints.filter((option) => option.id !== sprint.id),
+    { id: "", name: "Backlog" },
+  ]
 
-  function returnToBacklog(issueId: string) {
+  function move(issueId: string, sprintId: string) {
+    const name = destinations.find((option) => option.id === sprintId)?.name ?? "the sprint"
     startTransition(async () => {
-      const result = await assignIssueToSprint(projectId, issueId, "")
+      const result = await assignIssueToSprint(projectId, issueId, sprintId)
       if (result?.error) {
         toast.error(result.error)
         return
       }
-      toast.success(result?.success ?? "Issue returned to the backlog.")
+      toast.success(sprintId ? `Moved to ${name}.` : "Returned to the backlog.")
       router.refresh()
     })
   }
 
   return (
-    <section className={`grid gap-3 overflow-hidden rounded-xl border border-t-2 bg-card p-4 shadow-sm ${sprintTone(sprint.status)}`}>
+    <section className="grid gap-3 overflow-hidden rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">{sprint.name}</h2>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="min-w-0 text-sm font-semibold [overflow-wrap:anywhere]">{sprint.name}</h3>
             <Badge variant={sprint.status === "active" ? "default" : "secondary"}>{sprintLabel(sprint.status)}</Badge>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{dates}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{formatSprintDates(sprint.startDate, sprint.endDate)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {sprint.status !== "completed" ? (
+          {sprint.status === "active" ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`${projectHref(projectId, "board")}?scope=sprint`}>Open on board</Link>
+            </Button>
+          ) : null}
+          {!readOnly && sprint.status !== "completed" ? (
             <EditSprintButton
               sprintId={sprint.id}
               name={sprint.name}
@@ -222,12 +232,12 @@ function SprintCard({
               endDate={sprint.endDate}
             />
           ) : null}
-          {sprint.status === "future" ? (
+          {!readOnly && sprint.status === "future" ? (
             <Button
               type="button"
               size="sm"
-              disabled={pending || hasActive}
-              title={hasActive ? "Complete the active sprint first." : undefined}
+              disabled={pending || blocked}
+              title={blocked ? "Complete the active sprint first." : undefined}
               onClick={() => {
                 startTransition(async () => {
                   const result = await startSprint(projectId, sprint.id)
@@ -239,55 +249,116 @@ function SprintCard({
                 })
               }}
             >
-              {pending ? "Starting…" : "Start sprint"}
+              {pending ? "Starting…" : "Start"}
             </Button>
           ) : null}
           {sprint.status === "active" ? <CompleteSprintButton projectId={projectId} sprintId={sprint.id} /> : null}
+          {!readOnly && canManage && sprint.status === "future" ? (
+            <Button type="button" size="sm" variant="ghost" className="text-destructive" disabled={pending} onClick={() => setConfirmDelete(true)}>
+              Delete
+            </Button>
+          ) : null}
         </div>
       </div>
-      {sprint.goal ? <p className="text-sm [overflow-wrap:anywhere]">{sprint.goal}</p> : <p className="text-sm text-muted-foreground">No goal yet.</p>}
-      <ProgressMeter done={done} open={total - done} barClass={sprint.status === "completed" ? "bg-chart-2" : "bg-primary"} />
+      {sprint.goal ? <p className="text-sm [overflow-wrap:anywhere]">{sprint.goal}</p> : null}
+      <ProgressMeter done={done} open={total - done} />
       {total > 0 ? (
-        <ul className="divide-y rounded-lg border">
+        <ul className="max-h-80 divide-y overflow-y-auto rounded-lg border">
           {sprint.issues.map((issue) => (
-            <li key={issue.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
+            <li key={issue.id} className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center">
               <IssueLine projectKey={projectKey} issue={issue} />
-              {sprint.status !== "completed" ? (
-                <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => returnToBacklog(issue.id)}>
-                  Move to backlog
-                </Button>
+              {!readOnly && sprint.status !== "completed" ? (
+                <MoveMenu
+                  label="Move"
+                  title={`Move ${issue.title}`}
+                  pending={pending}
+                  options={destinations}
+                  onPick={(sprintId) => move(issue.id, sprintId)}
+                />
               ) : null}
             </li>
           ))}
         </ul>
+      ) : sprint.status !== "completed" ? (
+        <p className="text-sm text-muted-foreground">No issues yet. Add them from the backlog.</p>
       ) : (
-        <p className="text-sm text-muted-foreground">No issues in this sprint. Add them from the backlog.</p>
+        <p className="text-sm text-muted-foreground">No issues were recorded in this sprint.</p>
       )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete ${sprint.name}?`}
+        description="This planned sprint is removed. Issues in it return to the backlog."
+        confirmLabel="Delete sprint"
+        pending={pending}
+        destructive
+        onConfirm={() => {
+          startTransition(async () => {
+            const result = await deleteSprint(projectId, sprint.id)
+            if (result?.error) {
+              toast.error(result.error)
+              return
+            }
+            toast.success(result?.success ?? "Sprint deleted.")
+            setConfirmDelete(false)
+            router.refresh()
+          })
+        }}
+      />
     </section>
+  )
+}
+
+function MoveMenu({
+  label,
+  title,
+  pending,
+  options,
+  onPick,
+}: {
+  label: string
+  title: string
+  pending: boolean
+  options: SprintOption[]
+  onPick: (sprintId: string) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" size="sm" variant="outline" className="w-full shrink-0 sm:w-auto" disabled={pending} aria-label={title}>
+          {label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {options.map((option) => (
+          <DropdownMenuItem key={option.id || "backlog"} onSelect={() => onPick(option.id)}>
+            <span className="truncate">{option.name}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 function IssueLine({ projectKey, issue }: { projectKey: string; issue: SprintIssue }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-      <Link href={`/issues/${issue.id}`} className="inline-flex w-24 shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:underline sm:w-28">
-        <LinkPending />
-        {issueKey(projectKey, issue.number)}
-      </Link>
-      <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
-        {issue.title}
-      </IssueOpenButton>
-      <StatusChip name={issue.status} done={issue.done} />
-      <PriorityMark name={issue.priority} />
-      <span className="max-w-36 truncate text-xs text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</span>
+    <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 items-center gap-2">
+        <Link href={`/issues/${issue.id}`} className="inline-flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground hover:underline">
+          <LinkPending />
+          {issueKey(projectKey, issue.number)}
+        </Link>
+        <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
+          {issue.title}
+        </IssueOpenButton>
+      </div>
+      <p className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <StatusChip name={issue.status} done={issue.done} />
+        <PriorityMark name={issue.priority} />
+        <span className="truncate">{issue.assigneeName ?? "Unassigned"}</span>
+      </p>
     </div>
   )
-}
-
-function sprintRank(status: string) {
-  if (status === "active") return 0
-  if (status === "future") return 1
-  return 2
 }
 
 function CompleteSprintButton({ projectId, sprintId }: { projectId: string; sprintId: string }) {
@@ -297,13 +368,13 @@ function CompleteSprintButton({ projectId, sprintId }: { projectId: string; spri
   return (
     <>
       <RevealButton type="button" size="sm" variant="outline" disabled={pending} onReveal={() => setOpen(true)}>
-        {pending ? "Completing…" : "Complete sprint"}
+        {pending ? "Completing…" : "Complete"}
       </RevealButton>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
         title="Complete this sprint?"
-        description="Issues that are not done return to the backlog. This sprint cannot take new work afterward."
+        description="Issues that are not done return to the backlog. This sprint stays as a record and cannot take new work."
         confirmLabel="Complete sprint"
         pending={pending}
         onConfirm={() => {

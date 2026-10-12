@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { Suspense } from "react"
 
@@ -6,6 +7,8 @@ import { PageHeader } from "@/components/layout/page-header"
 import { AppearanceSettings } from "@/components/settings/appearance-settings"
 import { FormSkeleton } from "@/components/shared/page-skeleton"
 import { LoadError } from "@/components/shared/load-error"
+import { Button } from "@/components/ui/button"
+import { signOut } from "@/lib/actions/auth"
 import { getCurrentUser } from "@/lib/auth/session"
 import { userInitials } from "@/lib/auth/user"
 import { AppError } from "@/lib/errors/app-error"
@@ -20,7 +23,7 @@ export default function SettingsPage() {
     <div className="grid max-w-2xl gap-4">
       <PageHeader
         title="Settings"
-        description="Account settings for your name, notifications, and this device. Members, keys, and archive live on each project."
+        description="Your name, how FixTask looks on this device, and where to find notifications."
       />
       <Suspense fallback={<FormSkeleton />}>
         <ProfileSection />
@@ -33,16 +36,19 @@ export default function SettingsPage() {
             <span className="block font-medium">Notifications</span>
             <span className="text-xs text-muted-foreground">Assignments, mentions, and comments</span>
           </span>
-          <span className="text-xs font-medium text-info">Open</span>
+          <ArrowRight className="size-4 text-muted-foreground" />
         </Link>
         <Link href="/projects" className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/40">
           <span>
             <span className="block font-medium">Projects</span>
             <span className="text-xs text-muted-foreground">Name, key, members, and archive live on each project</span>
           </span>
-          <span className="text-xs font-medium text-info">Open</span>
+          <ArrowRight className="size-4 text-muted-foreground" />
         </Link>
       </section>
+      <form action={signOut}>
+        <Button type="submit" variant="outline">Sign out</Button>
+      </form>
     </div>
   )
 }
@@ -62,16 +68,15 @@ async function ProfileSection() {
   const metadataName = metadataFullName(user.user_metadata)
   return (
     <section className="grid gap-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex size-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+      <div className="flex items-start gap-3">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
           {userInitials(profileName || metadataName || user.email || "FixTask")}
         </span>
-        <div>
-        <p className="text-xs font-medium text-muted-foreground">Account</p>
-        <h2 className="text-sm font-medium">Profile</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          This name is shown in the account menu and to people who share a project with you.
-        </p>
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">Profile</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This name shows in the account menu and to people who share a project with you.
+          </p>
         </div>
       </div>
       <ProfileForm email={user.email ?? ""} fullName={profileName || metadataName} />

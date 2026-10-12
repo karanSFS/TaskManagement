@@ -24,10 +24,13 @@ export default function ForgotPasswordPage() {
       <CardContent>
         <ForgotPasswordForm />
       </CardContent>
-      <CardFooter className="text-xs text-muted-foreground">
-        <Link href="/login" className="font-medium text-info hover:underline">
-          Back to sign in
-        </Link>
+      <CardFooter>
+        <p className="text-xs text-muted-foreground">
+          Remembered it?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Back to sign in
+          </Link>
+        </p>
       </CardFooter>
     </Card>
   )

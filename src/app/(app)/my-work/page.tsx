@@ -1,16 +1,17 @@
+import Form from "next/form"
 import Link from "next/link"
 import { Suspense } from "react"
-import { AlarmClock, CalendarClock, CircleDot, ListTodo } from "lucide-react"
+import { AlarmClock, CalendarClock, CircleDot, ListTodo, Search } from "lucide-react"
 
 import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
-import { IssueOpenButton } from "@/components/issues/issue-drawer"
+import { IssueList, IssueListRow } from "@/components/issues/issue-list"
 import { PageHeader } from "@/components/layout/page-header"
-import { WorkSwitcher } from "@/components/my-work/work-switcher"
 import { MyWorkSkeleton } from "@/components/shared/page-skeleton"
-import { FilterDrawer, FilterField, filterFieldClass } from "@/components/shared/filter-drawer"
-import { LinkPending } from "@/components/shared/pending-ui"
+import { FilterDrawer, FilterField } from "@/components/shared/filter-drawer"
+import { filterFieldClass } from "@/components/shared/field-styles"
+import { SegmentedLinks } from "@/components/shared/segmented-links"
 import { PriorityMark } from "@/components/shared/priority-mark"
-import { StatusChip } from "@/components/shared/visual"
+import { StatusChip, priorityEdge } from "@/components/shared/visual"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatDueDate, issueKey } from "@/lib/projects/format"
@@ -31,11 +32,11 @@ type WorkSearch = {
 
 const fieldClass = filterFieldClass
 
-const views: { id: MyWorkView; label: string; hint: string }[] = [
-  { id: "assigned", label: "Assigned to me", hint: "Open issues on you" },
-  { id: "reported", label: "Reported by me", hint: "Open issues you created" },
-  { id: "due", label: "Due soon", hint: "Due within 7 days" },
-  { id: "overdue", label: "Overdue", hint: "Past the due date" },
+const views: { id: MyWorkView; label: string }[] = [
+  { id: "assigned", label: "Assigned" },
+  { id: "reported", label: "Reported" },
+  { id: "due", label: "Due soon" },
+  { id: "overdue", label: "Overdue" },
 ]
 
 export default function MyWorkPage({ searchParams }: { searchParams: Promise<WorkSearch> }) {
@@ -85,27 +86,32 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
   const to = Math.min(work.page * work.pageSize, work.total)
 
   return (
-    <WorkSwitcher
-      view={view}
-      cards={views.map((item) => ({
-        id: item.id,
-        href: workHref({ ...filters, view: item.id, page: undefined }),
-        label: item.label,
-        hint: item.hint,
-        value: countFor(item.id, work.counts),
-        alert: item.id === "overdue" && work.counts.overdue > 0,
-      }))}
-      toolbar={
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="grid gap-4">
+      <SegmentedLinks
+        label="My work"
+        items={views.map((item) => ({
+          href: workHref({ ...filters, view: item.id, page: undefined }),
+          label: `${item.label} ${countFor(item.id, work.counts)}`,
+          active: view === item.id,
+        }))}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+          <Form action="/my-work" replace scroll={false} className="relative min-w-0 flex-1 sm:max-w-64">
+            {view !== "assigned" ? <input type="hidden" name="view" value={view} /> : null}
+            {filters.statusId ? <input type="hidden" name="statusId" value={filters.statusId} /> : null}
+            {filters.priorityId ? <input type="hidden" name="priorityId" value={filters.priorityId} /> : null}
+            {sort !== "updated" ? <input type="hidden" name="sort" value={sort} /> : null}
+            {filters.dir === "asc" ? <input type="hidden" name="dir" value="asc" /> : null}
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input name="q" defaultValue={filters.q} aria-label="Search your work" placeholder="Title or KEY-1" className={`${fieldClass} h-8 pl-8`} />
+          </Form>
           <FilterDrawer
             action="/my-work"
             title="Filter your work"
-            activeCount={[filters.q, filters.statusId, filters.priorityId, sort !== "updated" ? sort : "", filters.dir === "asc" ? "asc" : ""].filter(Boolean).length}
+            activeCount={[filters.statusId, filters.priorityId, sort !== "updated" ? sort : "", filters.dir === "asc" ? "asc" : ""].filter(Boolean).length}
           >
             <input type="hidden" name="view" value={view} />
-            <FilterField label="Search">
-              <input name="q" defaultValue={filters.q} placeholder="Title or KEY-1" className={fieldClass} />
-            </FilterField>
+            {filters.q ? <input type="hidden" name="q" value={filters.q} /> : null}
             <FilterField label="Status">
               <select name="statusId" defaultValue={filters.statusId} className={fieldClass}>
                 <option value="">Open statuses</option>
@@ -147,58 +153,35 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
               Showing {from}–{to} of {work.total}
             </p>
           ) : null}
-        </div>
-      }
-    >
+      </div>
       {work.total === 0 ? (
         <EmptyWork view={view} filtered={filtered} />
       ) : (
-        <div className="min-w-0 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b text-xs text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-medium" scope="col">Key</th>
-                <th className="px-3 py-2 font-medium" scope="col">Title</th>
-                <th className="px-3 py-2 font-medium" scope="col">Project</th>
-                <th className="px-3 py-2 font-medium" scope="col">Status</th>
-                <th className="px-3 py-2 font-medium" scope="col">Priority</th>
-                <th className="px-3 py-2 font-medium" scope="col">Assignee</th>
-                <th className="px-3 py-2 font-medium" scope="col">Due</th>
-                <th className="px-3 py-2 font-medium" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {work.items.map((issue) => {
-                const overdue = issue.dueDate !== null && issue.dueDate < today
-                return (
-                  <tr key={issue.id} className="hover:bg-muted/40">
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{issueKey(issue.projectKey, issue.number)}</td>
-                    <td className="max-w-64 px-3 py-2">
-                      <IssueOpenButton issueId={issue.id} className="block w-full truncate text-left font-medium hover:underline">
-                        {issue.title}
-                      </IssueOpenButton>
-                    </td>
-                    <td className="max-w-40 truncate px-3 py-2 text-muted-foreground">{issue.projectName}</td>
-                    <td className="px-3 py-2"><StatusChip name={issue.status} /></td>
-                    <td className="px-3 py-2"><PriorityMark name={issue.priority} /></td>
-                    <td className="max-w-36 truncate px-3 py-2 text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</td>
-                    <td className={overdue ? "px-3 py-2 text-destructive" : "px-3 py-2 text-muted-foreground"}>
-                      {issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                        <LinkPending />
-                        Open
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <IssueList>
+          {work.items.map((issue) => {
+            const overdue = issue.dueDate !== null && issue.dueDate < today
+            return (
+              <IssueListRow
+                key={issue.id}
+                id={issue.id}
+                issueKey={issueKey(issue.projectKey, issue.number)}
+                title={issue.title}
+                edge={priorityEdge(issue.priority)}
+                meta={
+                  <>
+                    <span className="max-w-40 truncate">{issue.projectName}</span>
+                    <StatusChip name={issue.status} />
+                    <PriorityMark name={issue.priority} />
+                    <span className="max-w-36 truncate">{issue.assigneeName ?? "Unassigned"}</span>
+                    <span className={overdue ? "font-medium text-destructive" : undefined}>
+                      {issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : `Due ${formatDueDate(issue.dueDate)}`) : "No due date"}
+                    </span>
+                  </>
+                }
+              />
+            )
+          })}
+        </IssueList>
       )}
       {work.total > work.pageSize ? (
         <div className="flex items-center justify-end gap-2">
@@ -215,7 +198,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
           ) : null}
         </div>
       ) : null}
-    </WorkSwitcher>
+    </div>
   )
 }
 

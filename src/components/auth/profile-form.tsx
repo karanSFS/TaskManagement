@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -34,8 +34,6 @@ export function ProfileForm({ email, fullName }: ProfileFormProps) {
     defaultValues: { fullName },
   })
 
-  const [savedName, setSavedName] = useState(fullName)
-
   function onSubmit(values: ProfileValues) {
     startTransition(async () => {
       const result = await updateProfile(values)
@@ -43,7 +41,6 @@ export function ProfileForm({ email, fullName }: ProfileFormProps) {
         toast.error(result.error)
         return
       }
-      setSavedName(values.fullName)
       toast.success(result?.success ?? "Profile updated.")
       router.refresh()
     })
@@ -66,9 +63,7 @@ export function ProfileForm({ email, fullName }: ProfileFormProps) {
               <FormControl>
                 <Input autoComplete="name" {...field} />
               </FormControl>
-              <FormDescription>
-                Shown in the account menu. Saved name: {savedName || "not set"}.
-              </FormDescription>
+              <FormDescription>People on your projects see this name.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

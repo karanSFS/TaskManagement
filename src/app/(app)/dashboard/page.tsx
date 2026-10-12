@@ -1,23 +1,24 @@
 import Link from "next/link"
 import { Suspense, type ReactNode } from "react"
-import { AlarmClock, ArrowUpRight, CircleDot, FolderKanban, FolderPlus, ListTodo, Plus, CheckCircle2 } from "lucide-react"
+import { Archive, ArrowRight, FolderPlus, Plus, UserPlus, Zap } from "lucide-react"
 
+import { InvitationCard } from "@/components/invitations/invitation-actions"
 import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { IssueOpenButton } from "@/components/issues/issue-drawer"
+import { ArchiveProjectButton } from "@/components/projects/archive-project-button"
 import { CreateProjectButton } from "@/components/projects/create-project-dialog"
 import { ProjectIcon } from "@/components/projects/project-icon"
 import { DashboardSkeleton } from "@/components/shared/page-skeleton"
-import { LinkPending } from "@/components/shared/pending-ui"
 import { priorityDot, projectAccent } from "@/components/shared/priority-mark"
-import { MetricLink, PersonStack, ProgressMeter } from "@/components/shared/visual"
-import { Badge } from "@/components/ui/badge"
+import { PersonStack, ProgressMeter } from "@/components/shared/visual"
 import { getCurrentUser } from "@/lib/auth/session"
 import { displayName } from "@/lib/auth/user"
+import { projectHref } from "@/lib/config/nav"
 import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
 import { listMyInvitations } from "@/lib/services/invitation.service"
-import { countOverdueIssues, listMyWork, listRecentActivity, type MyWorkItem } from "@/lib/services/issue.service"
+import { getMyWork, listMyWork, listRecentActivity, type MyWorkItem } from "@/lib/services/issue.service"
 import { getProjects, type ProjectSummary } from "@/lib/services/project.service"
-import { listActiveSprintProgress } from "@/lib/services/sprint.service"
+import { listActiveSprintProgress, type HomeSprint } from "@/lib/services/sprint.service"
 
 export const metadata = {
   title: "Home",
@@ -35,11 +36,11 @@ async function HomeContent() {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const [projects, work, activity, overdue, sprints, invitations] = await Promise.all([
+  const [projects, myWork, upcoming, activity, sprints, invitations] = await Promise.all([
     getProjects(user.id),
+    getMyWork(user.id, { view: "assigned" }),
     listMyWork(user.id),
     listRecentActivity(user.id),
-    countOverdueIssues(),
     listActiveSprintProgress(),
     user.email ? listMyInvitations(user.email) : Promise.resolve([]),
   ])
@@ -47,235 +48,344 @@ async function HomeContent() {
   const active = projects.filter((project) => !project.archivedAt)
   const archived = projects.filter((project) => project.archivedAt)
   const openIssues = active.reduce((total, project) => total + project.openIssueCount, 0)
-  const doneIssues = active.reduce((total, project) => total + project.doneIssueCount, 0)
   const today = new Date().toISOString().slice(0, 10)
-  const name = displayName(user)
-  const summary = homeSummary(openIssues, work.assigned.total, overdue)
-  const pendingInvites = invitations.filter((invitation) => invitation.status === "pending").length
+  const pendingInvites = invitations.filter((invitation) => invitation.status === "pending")
+  const { counts } = myWork
 
   return (
-    <div className="grid gap-5">
-      <section className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-sm sm:px-6">
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(120deg,transparent,rgba(37,99,235,0.55))]" />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-xl">
-            <p className="text-xs font-medium tracking-wide text-primary-foreground/80">FixTask</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Hello, {name}</h1>
-            <p className="mt-1 text-sm text-primary-foreground/85">{summary}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <CreateIssueButton className="bg-white text-primary hover:bg-white/90">
-              <Plus />
-              Create issue
-            </CreateIssueButton>
-            <CreateProjectButton variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-              <FolderPlus />
-              Create project
-            </CreateProjectButton>
-          </div>
+    <div className="grid gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Hello, {displayName(user)}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{homeSummary(counts.assigned, counts.dueSoon, counts.overdue, active.length)}</p>
         </div>
-      </section>
+        <div className="flex flex-wrap gap-2">
+          {active.length > 0 ? (
+            <CreateIssueButton>
+              <Plus />
+              New issue
+            </CreateIssueButton>
+          ) : null}
+          <CreateProjectButton variant="outline" takenKeys={projects.map((project) => project.key)}>
+            <FolderPlus />
+            New project
+          </CreateProjectButton>
+        </div>
+      </header>
 
-      {pendingInvites > 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-3 text-sm">
-          You have {pendingInvites === 1 ? "a pending invitation" : `${pendingInvites} pending invitations`}.{" "}
-          <Link href="/invitations" className="font-medium text-info hover:underline">
-            Review invitations
-          </Link>
-        </p>
+      {pendingInvites.length > 0 ? (
+        <section aria-labelledby="home-invites" className="grid gap-3">
+          <PanelHeading
+            id="home-invites"
+            title={pendingInvites.length === 1 ? "You have an invitation" : `You have ${pendingInvites.length} invitations`}
+            href={pendingInvites.length > 2 ? "/invitations" : undefined}
+            action="All invitations"
+          />
+          <div className="grid gap-3 lg:grid-cols-2">
+            {pendingInvites.slice(0, 2).map((invitation) => (
+              <InvitationCard key={invitation.id} invitation={{ ...invitation, emailMatches: true }} />
+            ))}
+          </div>
+        </section>
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <MetricLink href="/projects" label="Active projects" value={active.length} hint={archived.length > 0 ? `${archived.length} archived` : "Workspaces you belong to"} tone="bg-primary" icon={<FolderKanban className="size-4" />} />
-        <MetricLink href="/issues" label="Open issues" value={openIssues} hint="Not done, in active projects" tone="bg-info" icon={<CircleDot className="size-4" />} />
-        <MetricLink href="/my-work" label="Assigned to you" value={work.assigned.total} hint="Open issues on you" tone="bg-chart-2" icon={<ListTodo className="size-4" />} />
-        <MetricLink href="/my-work?view=overdue" label="Overdue" value={overdue} hint="Open issues past their due date" tone={overdue > 0 ? "bg-destructive" : "bg-warning"} icon={<AlarmClock className="size-4" />} alert={overdue > 0} />
-        <MetricLink href="/issues" label="Completed" value={doneIssues} hint="Done issues in active projects" tone="bg-success" icon={<CheckCircle2 className="size-4" />} />
+      {active.length === 0 ? (
+        archived.length > 0 ? <ArchivedOnly projects={archived} /> : <FirstRun />
+      ) : null}
+
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+        <Stat href="/my-work" label="Assigned to you" value={counts.assigned} />
+        <Stat href="/my-work?view=due" label="Due this week" value={counts.dueSoon} />
+        <Stat href="/my-work?view=overdue" label="Overdue" value={counts.overdue} alert={counts.overdue > 0} />
+        <Stat href="/issues" label="Open in your projects" value={openIssues} />
       </dl>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
-        <section className="min-w-0">
-          <SectionHeading title="Assigned to you" href="/my-work" action="Open My Work" />
-          {work.assigned.items.length === 0 ? (
-            <EmptyBlock title="Nothing is assigned to you" description="Open issues you take on will show up here." action={<Link href="/issues" className="text-sm font-medium text-info hover:underline">Browse issues</Link>} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]">
+        <Panel
+          title="Assigned to you"
+          href="/my-work"
+          action={counts.assigned > 7 ? `View all ${counts.assigned}` : "My work"}
+        >
+          {myWork.items.length === 0 ? (
+            <PanelEmpty>
+              Nothing is assigned to you. Pick something up from a project board, or{" "}
+              <Link href="/issues" className="font-medium text-primary hover:underline">browse all issues</Link>.
+            </PanelEmpty>
           ) : (
-            <ul className="divide-y overflow-hidden rounded-xl border bg-card">
-              {work.assigned.items.slice(0, 6).map((issue) => (
+            <ul className="divide-y">
+              {myWork.items.slice(0, 7).map((issue) => (
                 <WorkRow key={issue.id} issue={issue} today={today} />
               ))}
             </ul>
           )}
-        </section>
-        <section className="min-w-0">
-          <SectionHeading title="Deadlines" href="/my-work?view=due" action="Due soon" />
-          {work.dueSoon.items.length === 0 ? (
-            <EmptyBlock title="No deadlines this week" description="Issues due in the next 7 days, including overdue ones, show up here." action={<CreateIssueButton size="sm" variant="outline">Create issue</CreateIssueButton>} />
-          ) : (
-            <ul className="grid gap-2">
-              {work.dueSoon.items.slice(0, 5).map((issue) => {
-                const late = issue.dueDate !== null && issue.dueDate < today
-                return (
-                  <li key={issue.id} className="rounded-xl border bg-card px-3 py-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Link href={`/issues/${issue.id}`} className="font-mono text-xs text-muted-foreground hover:underline">{issueKey(issue.projectKey, issue.number)}</Link>
-                      <span className={late ? "text-xs font-medium text-destructive" : "text-xs text-muted-foreground"}>
-                        {late ? "Overdue" : issue.dueDate ? formatDueDate(issue.dueDate) : ""}
+        </Panel>
+
+        <div className="grid min-w-0 gap-6">
+          <Panel title="Coming up" href="/my-work?view=due" action="Due soon">
+            {upcoming.dueSoon.items.length === 0 ? (
+              <PanelEmpty>No deadlines in the next 7 days.</PanelEmpty>
+            ) : (
+              <ul className="divide-y">
+                {upcoming.dueSoon.items.slice(0, 5).map((issue) => (
+                  <DueRow key={issue.id} issue={issue} today={today} />
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {sprints.length > 0 ? (
+            <Panel title="Active sprints">
+              <ul className="divide-y">
+                {sprints.map((sprint) => (
+                  <SprintRow key={sprint.id} sprint={sprint} />
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
+
+          <Panel title="Recent activity">
+            {activity.length === 0 ? (
+              <PanelEmpty>New issues, status changes, and assignments show up here.</PanelEmpty>
+            ) : (
+              <ol className="grid gap-3 px-4 py-3">
+                {activity.slice(0, 6).map((entry) => (
+                  <li key={entry.id} className="min-w-0">
+                    <IssueOpenButton issueId={entry.issueId} className="grid w-full text-left">
+                      <span className="text-sm [overflow-wrap:anywhere]">{entry.summary}</span>
+                      <span className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {entry.actorName} · {entry.issueKey} · {formatProjectDate(entry.createdAt)}
                       </span>
-                    </div>
-                    <IssueOpenButton issueId={issue.id} className="mt-1 block w-full truncate text-left text-sm font-medium hover:underline">{issue.title}</IssueOpenButton>
-                    <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className={`size-1.5 rounded-full ${priorityDot(issue.priority)}`} />
-                      {issue.priority} · {issue.status}
-                    </p>
+                    </IssueOpenButton>
                   </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
+                ))}
+              </ol>
+            )}
+          </Panel>
+        </div>
       </div>
 
-      <section>
-        <SectionHeading title="Projects" href="/projects" action="All projects" />
-        {projects.length === 0 ? (
-          <EmptyBlock title="No projects yet" description="Create a workspace before filing issues." action={<CreateProjectButton size="sm">Create project</CreateProjectButton>} />
-        ) : (
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {[...active, ...archived].slice(0, 6).map((project) => (
-              <HomeProjectCard key={project.id} project={project} />
+      {active.length > 0 ? (
+        <section aria-labelledby="home-projects" className="grid gap-3">
+          <PanelHeading id="home-projects" title="Your projects" href="/projects" action="All projects" />
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {active.slice(0, 6).map((project) => (
+              <ProjectTile key={project.id} project={project} />
             ))}
           </ul>
-        )}
-      </section>
+          {archived.length > 0 ? (
+            <Link href="/projects?status=archived" className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <Archive className="size-3.5" />
+              {archived.length} archived {archived.length === 1 ? "project" : "projects"}
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
+  )
+}
 
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        <section>
-          <SectionHeading title="Active sprints" href="/sprints" action="Sprint planning" />
-          {sprints.length === 0 ? (
-            <EmptyBlock title="No active sprint" description="Plan a sprint, then start it when the team is ready. Nothing here is estimated." action={<Link href="/sprints" className="text-sm font-medium text-info hover:underline">Open sprints</Link>} />
-          ) : (
-            <ul className="grid gap-3">
-              {sprints.map((sprint) => {
-                const total = sprint.open + sprint.done
-                const percent = total === 0 ? 0 : Math.round((sprint.done / total) * 100)
-                return (
-                  <li key={sprint.id} className="rounded-xl border bg-card p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{sprint.name}</p>
-                        <p className="text-xs text-muted-foreground">{sprint.projectKey} · {sprint.projectName}</p>
-                      </div>
-                      <Badge variant="secondary">Active</Badge>
-                    </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-chart-2" style={{ width: `${percent}%` }} />
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {sprint.done} of {total} done
-                      {sprint.endDate ? ` · ends ${formatDueDate(sprint.endDate)}` : " · no end date"}
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
-        <section>
-          <SectionHeading title="Recent activity" href="/issues" action="Issues" />
-          {activity.length === 0 ? (
-            <EmptyBlock title="No issue activity yet" description="Status changes, assignments, and new issues will show up here." action={<CreateIssueButton size="sm" variant="outline">Create issue</CreateIssueButton>} />
-          ) : (
-            <ol className="relative grid gap-0 border-l border-border pl-4">
-              {activity.slice(0, 6).map((entry) => (
-                <li key={entry.id} className="relative pb-4 last:pb-0">
-                  <span className="absolute top-1.5 -left-[1.2rem] size-2 rounded-full bg-primary ring-4 ring-background" />
-                  <IssueOpenButton issueId={entry.issueId} className="grid w-full text-left">
-                    <span className="text-sm [overflow-wrap:anywhere]">{entry.summary}</span>
-                    <span className="mt-0.5 text-xs text-muted-foreground">
-                      {entry.actorName} · {entry.issueKey} · {formatProjectDate(entry.createdAt)}
-                    </span>
-                  </IssueOpenButton>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+function homeSummary(assigned: number, dueSoon: number, overdue: number, activeProjects: number) {
+  if (activeProjects === 0) return "You have no active projects right now."
+  if (assigned === 0) return "Nothing is assigned to you. A good moment to plan the next sprint."
+  const parts = [`${assigned} ${assigned === 1 ? "issue is" : "issues are"} assigned to you`]
+  if (overdue > 0) parts.push(`${overdue} overdue`)
+  else if (dueSoon > 0) parts.push(`${dueSoon} due this week`)
+  return `${parts.join(", ")}.`
+}
+
+function ArchivedOnly({ projects }: { projects: ProjectSummary[] }) {
+  return (
+    <section className="grid gap-4 rounded-xl border border-warning/40 bg-warning/5 p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
+          <Archive className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold tracking-tight">All your projects are archived</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Archived projects are read-only: you can&apos;t create issues, assign work, or invite people there. Restore a project to
+            keep working, or start a new one.
+          </p>
+        </div>
       </div>
-    </div>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {projects.slice(0, 4).map((project) => {
+          const canRestore = project.role === "owner" || project.role === "admin"
+          return (
+            <li key={project.id} className="flex min-w-0 items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
+              <ProjectIcon name={project.icon} />
+              <Link href={`/projects/${project.id}`} className="min-w-0 flex-1 truncate text-sm font-medium hover:underline">
+                {project.name}
+              </Link>
+              {canRestore ? (
+                <ArchiveProjectButton projectId={project.id} archived compact />
+              ) : (
+                <span className="text-xs text-muted-foreground">Ask an owner to restore</span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
-function homeSummary(openIssues: number, assigned: number, overdue: number) {
-  if (openIssues === 0 && assigned === 0) return "No open work in your projects yet. Create an issue or a project to get started."
-  if (overdue > 0) return `${assigned} assigned to you, ${openIssues} open overall, ${overdue} overdue.`
-  return `${assigned} assigned to you and ${openIssues} open across your projects.`
-}
-
-function SectionHeading({ title, href, action }: { title: string; href: string; action: string }) {
+function FirstRun() {
+  const steps = [
+    { icon: FolderPlus, title: "Create a project", body: "Give the work a name and a short key, like WEB. Issues are numbered WEB-1, WEB-2…" },
+    { icon: UserPlus, title: "Invite your team", body: "Send invitations from the project's Members tab. People join when they accept." },
+    { icon: Zap, title: "Plan a sprint", body: "Add issues to the backlog, pull them into a sprint, and track them on the board." },
+  ]
   return (
-    <div className="mb-2 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-      <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-info hover:underline">
-        {action}
-        <ArrowUpRight className="size-3" />
-      </Link>
+    <section className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight">Get started with FixTask</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Three steps to your first sprint.</p>
+      </div>
+      <ol className="grid gap-3 md:grid-cols-3">
+        {steps.map((step, index) => (
+          <li key={step.title} className="rounded-lg border bg-muted/30 p-3">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <span className="flex size-6 items-center justify-center rounded-full bg-accent text-xs text-accent-foreground">{index + 1}</span>
+              {step.title}
+            </span>
+            <p className="mt-1.5 text-xs text-muted-foreground">{step.body}</p>
+          </li>
+        ))}
+      </ol>
+      <CreateProjectButton className="w-fit">
+        <FolderPlus />
+        Create your first project
+      </CreateProjectButton>
+    </section>
+  )
+}
+
+function Stat({ href, label, value, alert = false }: { href: string; label: string; value: number; alert?: boolean }) {
+  return (
+    <Link href={href} className="group bg-card px-4 py-3 transition-colors hover:bg-muted/40">
+      <dt className="text-xs text-muted-foreground group-hover:text-foreground">{label}</dt>
+      <dd className={alert ? "mt-1 text-2xl font-semibold tracking-tight text-destructive tabular-nums" : "mt-1 text-2xl font-semibold tracking-tight tabular-nums"}>
+        {value}
+      </dd>
+    </Link>
+  )
+}
+
+function PanelHeading({ id, title, href, action }: { id?: string; title: string; href?: string; action?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h2 id={id} className="text-sm font-semibold tracking-tight">{title}</h2>
+      {href && action ? (
+        <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          {action}
+          <ArrowRight className="size-3" />
+        </Link>
+      ) : null}
     </div>
   )
 }
 
-function EmptyBlock({ title, description, action }: { title: string; description: string; action: ReactNode }) {
+function Panel({ title, href, action, children }: { title: string; href?: string; action?: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed bg-card/70 px-4 py-5">
-      <p className="text-sm font-medium">{title}</p>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p>
-      <div className="mt-3">{action}</div>
-    </div>
+    <section className="min-w-0 overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-2.5">
+        <PanelHeading title={title} href={href} action={action} />
+      </div>
+      {children}
+    </section>
   )
+}
+
+function PanelEmpty({ children }: { children: ReactNode }) {
+  return <p className="px-4 py-6 text-sm text-muted-foreground">{children}</p>
 }
 
 function WorkRow({ issue, today }: { issue: MyWorkItem; today: string }) {
   const late = issue.dueDate !== null && issue.dueDate < today
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/40">
-      <span className={`size-2 shrink-0 rounded-full ${priorityDot(issue.priority)}`} title={issue.priority} />
-      <Link href={`/issues/${issue.id}`} className="w-20 shrink-0 truncate font-mono text-xs text-muted-foreground hover:underline sm:w-24">
-        {issueKey(issue.projectKey, issue.number)}
-      </Link>
-      <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm font-medium">{issue.title}</IssueOpenButton>
-      <span className="hidden max-w-32 truncate text-xs text-muted-foreground md:inline">{issue.projectName}</span>
+    <li className="flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-muted/40">
+      <span className={`size-2 shrink-0 rounded-full ${priorityDot(issue.priority)}`} title={`${issue.priority} priority`} />
+      <div className="min-w-0 flex-1">
+        <IssueOpenButton issueId={issue.id} className="block w-full truncate text-left text-sm font-medium hover:underline">
+          {issue.title}
+        </IssueOpenButton>
+        <p className="truncate text-xs text-muted-foreground">
+          <span className="font-mono">{issueKey(issue.projectKey, issue.number)}</span> · {issue.projectName}
+        </p>
+      </div>
       <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">{issue.status}</span>
-      <span className={late ? "shrink-0 text-xs font-medium text-destructive" : "shrink-0 text-xs text-muted-foreground"}>
-        {issue.dueDate ? formatDueDate(issue.dueDate) : "No due date"}
-      </span>
+      {issue.dueDate ? (
+        <span className={late ? "shrink-0 text-xs font-medium text-destructive" : "shrink-0 text-xs text-muted-foreground"}>
+          {formatDueDate(issue.dueDate)}
+        </span>
+      ) : null}
     </li>
   )
 }
 
-function HomeProjectCard({ project }: { project: ProjectSummary }) {
-  const accent = projectAccent(project.key)
-
+function DueRow({ issue, today }: { issue: MyWorkItem; today: string }) {
+  const late = issue.dueDate !== null && issue.dueDate < today
   return (
-    <li className="overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
-      <div className={`h-1 ${accent.bar}`} />
-      <Link href={`/projects/${project.id}`} className="flex items-start gap-3 px-3 pt-3">
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
-          <ProjectIcon name={project.icon} />
+    <li className="min-w-0 px-4 py-2.5">
+      <IssueOpenButton issueId={issue.id} className="block w-full truncate text-left text-sm font-medium hover:underline">
+        {issue.title}
+      </IssueOpenButton>
+      <p className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate font-mono">{issueKey(issue.projectKey, issue.number)}</span>
+        <span className={late ? "shrink-0 font-medium text-destructive" : "shrink-0"}>
+          {late ? "Overdue · " : ""}
+          {issue.dueDate ? formatDueDate(issue.dueDate) : ""}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium">{project.name}</span>
-            <LinkPending />
-          </span>
-          <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">{project.key}</span>
+      </p>
+    </li>
+  )
+}
+
+function SprintRow({ sprint }: { sprint: HomeSprint }) {
+  const total = sprint.open + sprint.done
+  const percent = total === 0 ? 0 : Math.round((sprint.done / total) * 100)
+  return (
+    <li>
+      <Link href={projectHref(sprint.projectId, "sprints")} className="block px-4 py-3 hover:bg-muted/40">
+        <span className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium">{sprint.name}</span>
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{percent}%</span>
         </span>
-        {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+          {sprint.projectName}
+          {sprint.endDate ? ` · ends ${formatDueDate(sprint.endDate)}` : ""}
+        </span>
+        <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted">
+          <span className="block h-full bg-primary" style={{ width: `${percent}%` }} />
+        </span>
       </Link>
-      <div className="px-3 pt-3 pb-3">
+    </li>
+  )
+}
+
+function ProjectTile({ project }: { project: ProjectSummary }) {
+  const accent = projectAccent(project.key)
+  return (
+    <li className="min-w-0">
+      <Link
+        href={projectHref(project.id, "board")}
+        className="flex h-full flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
+            <ProjectIcon name={project.icon} />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium">{project.name}</span>
+            <span className="block font-mono text-[11px] text-muted-foreground">{project.key}</span>
+          </span>
+        </span>
         <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} barClass={accent.bar} />
-        <div className="mt-2 flex justify-end">
+        <span className="mt-auto flex justify-end">
           <PersonStack people={project.roster} total={project.memberCount} />
-        </div>
-      </div>
+        </span>
+      </Link>
     </li>
   )
 }

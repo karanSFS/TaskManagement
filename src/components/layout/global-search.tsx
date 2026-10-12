@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import {
@@ -29,6 +29,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const openIssue = useOpenIssue()
   const [query, setQuery] = useState("")
   const [issues, setIssues] = useState<IssueHit[]>([])
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
+  const requestId = useRef(0)
   const pages = [...mainNav, ...utilityNav]
   const needle = query.trim().toLowerCase()
   const visiblePages = pages.filter((item) => {
@@ -37,30 +39,69 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   })
 
   useEffect(() => {
-    if (!open) return
+    if (!open || query.trim().length < 2) return
+    const request = requestId.current
     const handle = window.setTimeout(() => {
-      void searchIssues(query).then(setIssues)
+      void searchIssues(query).then((result) => {
+        if (request !== requestId.current) return
+        if (result.error) {
+          setIssues([])
+          setStatus("error")
+          return
+        }
+        setIssues(result.issues)
+        setStatus("idle")
+      })
     }, 250)
     return () => window.clearTimeout(handle)
   }, [open, query])
 
-  function go(href: string) {
-    onOpenChange(false)
+  function onQueryChange(value: string) {
+    setQuery(value)
+    requestId.current += 1
+    if (value.trim().length < 2) {
+      setIssues([])
+      setStatus("idle")
+      return
+    }
+    setIssues([])
+    setStatus("loading")
+  }
+
+  function close() {
+    requestId.current += 1
     setQuery("")
+    setIssues([])
+    setStatus("idle")
+    onOpenChange(false)
+  }
+
+  function go(href: string) {
+    close()
     router.push(href)
   }
 
   return (
     <CommandDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
       title="Search FixTask"
       description="Search issues by key, title, or label, or jump to a page."
     >
       <Command shouldFilter={false}>
-        <CommandInput placeholder="Search issues or pages…" value={query} onValueChange={setQuery} />
+        <CommandInput placeholder="Search issues or pages…" value={query} onValueChange={onQueryChange} />
         <CommandList>
-          <CommandEmpty>No matching pages or issues.</CommandEmpty>
+          {status === "loading" || status === "error" ? null : <CommandEmpty>No matching pages or issues.</CommandEmpty>}
+          {status === "loading" ? (
+            <p className={visiblePages.length > 0 ? "px-2 py-1.5 text-xs text-muted-foreground" : "px-2 py-6 text-center text-sm text-muted-foreground"}>
+              Searching…
+            </p>
+          ) : null}
+          {status === "error" ? (
+            <p className="px-2 py-6 text-center text-sm text-destructive" role="alert">
+              Search failed. Try again.
+            </p>
+          ) : null}
           {issues.length > 0 ? (
             <CommandGroup heading="Issues">
               {issues.map((issue) => (
@@ -68,8 +109,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                   key={issue.id}
                   value={issue.id}
                   onSelect={() => {
-                    onOpenChange(false)
-                    setQuery("")
+                    close()
                     openIssue(issue.id)
                   }}
                 >

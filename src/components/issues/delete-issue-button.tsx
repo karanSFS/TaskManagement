@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { RevealButton } from "@/components/shared/pending-ui"
 import { deleteIssue } from "@/lib/actions/issues"
 
-export function DeleteIssueButton({ issueId, issueKey }: { issueId: string; issueKey: string }) {
+export function DeleteIssueButton({ issueId, issueKey, onDeleted }: { issueId: string; issueKey: string; onDeleted?: () => void }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -16,7 +16,7 @@ export function DeleteIssueButton({ issueId, issueKey }: { issueId: string; issu
   return (
     <>
       <RevealButton type="button" size="sm" variant="ghost" className="text-destructive" disabled={pending} onReveal={() => setOpen(true)}>
-        Delete issue
+        Delete
       </RevealButton>
       <ConfirmDialog
         open={open}
@@ -35,7 +35,8 @@ export function DeleteIssueButton({ issueId, issueKey }: { issueId: string; issu
             }
             toast.success(result?.success ?? "Issue deleted.")
             setOpen(false)
-            if (result?.href) router.push(result.href)
+            if (onDeleted) onDeleted()
+            else if (result?.href) router.push(result.href)
           })
         }}
       />

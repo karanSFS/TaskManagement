@@ -3,8 +3,8 @@
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
   KeyboardSensor,
+  PointerSensor,
   pointerWithin,
   useDraggable,
   useDroppable,
@@ -14,20 +14,20 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
-import Link from "next/link"
+import { CalendarClock } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react"
 import { toast } from "sonner"
 
+import { CreateIssueButton } from "@/components/issues/create-issue-dialog"
 import { useOpenIssue } from "@/components/issues/issue-drawer"
-import { changeIssueStatus } from "@/lib/actions/issues"
-import { assignIssueToSprint } from "@/lib/actions/sprints"
-import { userInitials } from "@/lib/auth/user"
 import { PriorityMark } from "@/components/shared/priority-mark"
-import { issueKey } from "@/lib/projects/format"
-import type { BoardCard, BoardColumn, BoardSprint } from "@/lib/services/issue.service"
+import { changeIssueStatus } from "@/lib/actions/issues"
+import { boardScrollEdges } from "@/lib/issues/board-scroll"
+import { userInitials } from "@/lib/auth/user"
+import { formatDueDate, issueKey } from "@/lib/projects/format"
+import type { BoardCard, BoardColumn } from "@/lib/services/issue.service"
+import { cn } from "@/lib/utils"
 
 const collision: CollisionDetection = (args) => pointerWithin(args)
 
@@ -35,12 +35,14 @@ export function IssueBoard({
   columns,
   projectKey,
   projectId,
-  sprints,
+  readOnly,
+  today,
 }: {
   columns: BoardColumn[]
   projectKey: string
   projectId: string
-  sprints: BoardSprint[]
+  readOnly: boolean
+  today: string
 }) {
   const router = useRouter()
   const [items, setItems] = useState(columns)
@@ -48,7 +50,9 @@ export function IssueBoard({
   const [pending, startTransition] = useTransition()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
   )
   const activeCard = activeId ? items.flatMap((column) => column.issues).find((card) => card.id === activeId) : null
 
@@ -81,58 +85,80 @@ export function IssueBoard({
     })
   }
 
-  function onSprint(issueId: string, sprintId: string) {
-    if (pending) return
-    startTransition(async () => {
-      const result = await assignIssueToSprint(projectId, issueId, sprintId)
-      if (result?.error) {
-        toast.error(result.error)
-        return
-      }
-      toast.success(result?.success ?? "Sprint updated.")
-      router.refresh()
-    })
-  }
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collision}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => setActiveId(null)}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable: "Press Space to pick up the card, use the arrow keys to move it, and press Space again to drop it. Press Enter to open it.",
+        },
+      }}
+    >
+      <BoardScroller>
+        {items.map((column, index) => (
+          <Column
+            key={column.id}
+            column={column}
+            projectKey={projectKey}
+            projectId={projectId}
+            canCreate={!readOnly && index === 0}
+            disabled={readOnly || pending}
+            today={today}
+          />
+        ))}
+      </BoardScroller>
+      <DragOverlay>
+        {activeCard ? (
+          <div className="w-[min(18rem,80vw)] rotate-1">
+            <CardFace card={activeCard} projectKey={projectKey} today={today} overlay />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
+}
+
+function BoardScroller({ children }: { children: ReactNode }) {
+  const scroller = useRef<HTMLDivElement>(null)
+  const track = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
+
+  useEffect(() => {
+    const node = scroller.current
+    const inner = track.current
+    if (!node || !inner) return
+
+    const update = () => {
+      const next = boardScrollEdges(node.scrollLeft, node.clientWidth, node.scrollWidth)
+      setEdges((current) => (current.left === next.left && current.right === next.right ? current : next))
+    }
+
+    node.addEventListener("scroll", update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    observer.observe(inner)
+    return () => {
+      node.removeEventListener("scroll", update)
+      observer.disconnect()
+    }
+  }, [])
 
   return (
-    <div className="grid min-w-0 gap-2">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {items.map((column) => (
-          <button
-            key={column.id}
-            type="button"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs"
-            onClick={() => document.getElementById(`board-column-${column.id}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })}
-          >
-            <span className={`size-1.5 rounded-full ${categoryDot(column.category)}`} />
-            {column.name}
-            <span className="text-muted-foreground">{column.issues.length}</span>
-          </button>
-        ))}
-      </div>
-      <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
-        <div className="min-w-0 overflow-x-auto pb-2">
-          <div className="flex w-max min-w-full gap-3">
-            {items.map((column) => (
-              <Column
-                key={column.id}
-                column={column}
-                projectKey={projectKey}
-                sprints={sprints}
-                pending={pending}
-                onSprint={onSprint}
-              />
-            ))}
+    <div className="grid min-w-0 gap-1">
+      <div className="relative min-w-0">
+        <div ref={scroller} className="min-w-0 snap-x overflow-x-auto pb-3">
+          <div ref={track} className="flex w-max min-w-full gap-3">
+            {children}
           </div>
         </div>
-        <DragOverlay>
-          {activeCard ? (
-            <div className="w-[min(18rem,80vw)]">
-              <CardView card={activeCard} projectKey={projectKey} overlay />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+        {edges.left ? <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent" /> : null}
+        {edges.right ? <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" /> : null}
+      </div>
+      {edges.right ? <p className="text-xs text-muted-foreground">Swipe sideways for more columns.</p> : null}
     </div>
   )
 }
@@ -140,165 +166,123 @@ export function IssueBoard({
 function Column({
   column,
   projectKey,
-  sprints,
-  pending,
-  onSprint,
+  projectId,
+  canCreate,
+  disabled,
+  today,
 }: {
   column: BoardColumn
   projectKey: string
-  sprints: BoardSprint[]
-  pending: boolean
-  onSprint: (issueId: string, sprintId: string) => void
+  projectId: string
+  canCreate: boolean
+  disabled: boolean
+  today: string
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
   return (
     <section
-      id={`board-column-${column.id}`}
       ref={setNodeRef}
-      aria-label={column.name}
-      className={`flex max-h-[calc(100svh-16rem)] min-h-64 w-[min(18rem,80vw)] shrink-0 flex-col gap-2 rounded-xl border border-t-2 bg-muted/30 p-2 shadow-sm ${columnTone(column.category)} ${isOver ? "border-ring bg-primary/5" : ""}`}
+      aria-label={`${column.name}, ${column.issues.length} issues`}
+      className={cn(
+        "flex max-h-[calc(100svh-15rem)] min-h-72 w-[min(18rem,80vw)] shrink-0 snap-start flex-col rounded-xl bg-muted/50 transition-colors",
+        isOver && "bg-accent ring-2 ring-primary/40",
+      )}
     >
-      <header className="flex items-center justify-between px-1">
-        <h2 className="flex items-center gap-1.5 text-sm font-medium">
-          <span className={`size-1.5 rounded-full ${categoryDot(column.category)}`} />
-          {column.name}
+      <header className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
+        <h2 className="flex min-w-0 items-center gap-2 text-xs font-semibold tracking-wide uppercase">
+          <span className={cn("size-2 shrink-0 rounded-full", categoryDot(column.category))} />
+          <span className="truncate">{column.name}</span>
         </h2>
-        <span className="text-xs text-muted-foreground">{column.issues.length}</span>
+        <span className="rounded-full bg-background px-1.5 text-xs text-muted-foreground tabular-nums">{column.issues.length}</span>
       </header>
-      <div className="grid min-h-24 content-start gap-2 overflow-y-auto">
-        {column.issues.length === 0 ? <p className="rounded-lg border border-dashed px-2 py-4 text-center text-xs text-muted-foreground">Nothing here.</p> : null}
+      <div className="grid min-h-16 content-start gap-2 overflow-y-auto px-2 pb-2">
+        {column.issues.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-2 py-6 text-center text-xs text-muted-foreground">
+            {disabled ? "No issues" : "Drop issues here"}
+          </p>
+        ) : null}
         {column.issues.map((card) => (
-          <Card key={card.id} card={card} projectKey={projectKey} sprints={sprints} pending={pending} onSprint={onSprint} />
+          <DraggableCard key={card.id} card={card} projectKey={projectKey} disabled={disabled} today={today} />
         ))}
       </div>
+      {canCreate ? (
+        <div className="px-2 pb-2">
+          <CreateIssueButton projectId={projectId} variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+            + Add issue
+          </CreateIssueButton>
+        </div>
+      ) : null}
     </section>
   )
 }
 
-function Card({
-  card,
-  projectKey,
-  sprints,
-  pending,
-  onSprint,
-}: {
-  card: BoardCard
-  projectKey: string
-  sprints: BoardSprint[]
-  pending: boolean
-  onSprint: (issueId: string, sprintId: string) => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, disabled: pending })
+function DraggableCard({ card, projectKey, disabled, today }: { card: BoardCard; projectKey: string; disabled: boolean; today: string }) {
+  const openIssue = useOpenIssue()
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id, disabled })
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      openIssue(card.id)
+      return
+    }
+    listeners?.onKeyDown?.(event)
+  }
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform) }} className={isDragging ? "opacity-40" : ""}>
-      <CardView
-        card={card}
-        projectKey={projectKey}
-        sprints={sprints}
-        pending={pending}
-        onSprint={onSprint}
-        dragAttributes={attributes}
-        dragListeners={listeners}
-      />
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onKeyDown={onKeyDown}
+      aria-label={`${issueKey(projectKey, card.number)}: ${card.title}`}
+      className={cn(
+        "cursor-pointer rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        !disabled && "active:cursor-grabbing",
+        isDragging && "opacity-30",
+      )}
+      onClick={() => openIssue(card.id)}
+    >
+      <CardFace card={card} projectKey={projectKey} today={today} />
     </div>
   )
 }
 
-function CardView({
-  card,
-  projectKey,
-  overlay = false,
-  sprints = [],
-  pending = false,
-  onSprint,
-  dragAttributes,
-  dragListeners,
-}: {
-  card: BoardCard
-  projectKey: string
-  overlay?: boolean
-  sprints?: BoardSprint[]
-  pending?: boolean
-  onSprint?: (issueId: string, sprintId: string) => void
-  dragAttributes?: ReturnType<typeof useDraggable>["attributes"]
-  dragListeners?: ReturnType<typeof useDraggable>["listeners"]
-}) {
-  const sprintOptions = card.sprintId && !sprints.some((sprint) => sprint.id === card.sprintId)
-    ? [{ id: card.sprintId, name: card.sprintName ?? "Current sprint" }, ...sprints]
-    : sprints
-
+function CardFace({ card, projectKey, today, overlay = false }: { card: BoardCard; projectKey: string; today: string; overlay?: boolean }) {
+  const late = card.dueDate !== null && card.dueDate < today
   return (
-    <article className={`rounded-lg border border-l-2 bg-card px-2.5 py-2 ${priorityClass(card.priority)} ${overlay ? "shadow-md" : ""}`}>
-      <div className="flex items-start gap-1.5">
-        {dragListeners ? (
-          <button
-            type="button"
-            className="mt-0.5 text-muted-foreground"
-            aria-label={`Drag ${card.title}`}
-            {...dragAttributes}
-            {...dragListeners}
-          >
-            <GripVertical className="size-3.5" />
-          </button>
+    <article className={cn("grid gap-2 rounded-lg border bg-card p-3 transition-shadow hover:shadow-sm", overlay && "shadow-lg")}>
+      <p className="line-clamp-3 text-sm [overflow-wrap:anywhere]">{card.title}</p>
+      <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <span className="shrink-0 font-mono">{issueKey(projectKey, card.number)}</span>
+        <PriorityMark name={card.priority} />
+        {card.dueDate ? (
+          <span className={cn("inline-flex shrink-0 items-center gap-1", late && "font-medium text-destructive")}>
+            <CalendarClock className="size-3" />
+            {formatDueDate(card.dueDate)}
+          </span>
         ) : null}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <Link
-              href={`/issues/${card.id}`}
-              className="text-xs font-medium text-muted-foreground hover:underline"
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              {issueKey(projectKey, card.number)}
-            </Link>
-            <Assignee name={card.assigneeName} />
-          </div>
-          <BoardTitle issueId={card.id} title={card.title} />
-          <p className="mt-1 text-xs"><PriorityMark name={card.priority} /></p>
-        </div>
+        <span className="ml-auto">
+          <Assignee name={card.assigneeName} />
+        </span>
       </div>
-      {onSprint && !overlay ? (
-        <select
-          className="mt-2 h-7 w-full rounded-md border border-input bg-transparent px-1.5 text-xs outline-none focus-visible:border-ring"
-          aria-label={`Sprint for ${card.title}`}
-          value={card.sprintId ?? ""}
-          disabled={pending}
-          onPointerDown={(event) => event.stopPropagation()}
-          onChange={(event) => onSprint(card.id, event.target.value)}
-        >
-          <option value="">Backlog</option>
-          {sprintOptions.map((sprint) => (
-            <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
-          ))}
-        </select>
-      ) : null}
     </article>
   )
 }
 
-function BoardTitle({ issueId, title }: { issueId: string; title: string }) {
-  const openIssue = useOpenIssue()
-  return (
-    <button
-      type="button"
-      className="mt-1 block w-full truncate text-left text-sm hover:underline"
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={() => openIssue(issueId)}
-    >
-      {title}
-    </button>
-  )
-}
-
 function Assignee({ name }: { name: string | null }) {
-  const label = name ?? "Unassigned"
+  const label = name ? `Assigned to ${name}` : "Unassigned"
   return (
     <span
-      className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium"
+      className={cn(
+        "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-medium",
+        name ? "bg-accent text-accent-foreground" : "border border-dashed text-muted-foreground",
+      )}
       title={label}
+      aria-label={label}
     >
-      {name ? userInitials(name) : "–"}
+      {name ? userInitials(name) : "?"}
     </span>
   )
 }
@@ -315,27 +299,6 @@ function moveCard(columns: BoardColumn[], issueId: string, statusId: string): Bo
         ? [moved, ...column.issues.filter((item) => item.id !== issueId)]
         : column.issues.filter((item) => item.id !== issueId),
   }))
-}
-
-function priorityClass(priority: string) {
-  switch (priority) {
-    case "Highest":
-      return "border-l-destructive"
-    case "High":
-      return "border-l-warning"
-    case "Medium":
-      return "border-l-info"
-    case "Low":
-      return "border-l-success"
-    default:
-      return "border-l-border"
-  }
-}
-
-function columnTone(category: string) {
-  if (category === "done") return "border-t-success"
-  if (category === "in_progress") return "border-t-info"
-  return "border-t-primary"
 }
 
 function categoryDot(category: string) {

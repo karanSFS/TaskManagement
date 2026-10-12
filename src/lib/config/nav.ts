@@ -1,15 +1,17 @@
 import {
   Bell,
-  Mail,
+  CalendarRange,
   ChartColumn,
   CircleDot,
-  CalendarRange,
   FolderKanban,
   House,
   Kanban,
+  LayoutDashboard,
   ListTodo,
+  Mail,
   Settings,
   SquareKanban,
+  Users,
   type LucideIcon,
 } from "lucide-react"
 
@@ -18,96 +20,53 @@ export type NavItem = {
   href: string
   icon: LucideIcon
   description: string
-  phase: string
 }
 
-export const mainNav: NavItem[] = [
-  {
-    title: "Home",
-    href: "/dashboard",
-    icon: House,
-    description: "Your working view of open work and recent activity.",
-    phase: "Phase 9",
-  },
-  {
-    title: "My Work",
-    href: "/my-work",
-    icon: ListTodo,
-    description: "Issues assigned to you, created by you, and due soon.",
-    phase: "Phase 4",
-  },
-  {
-    title: "Projects",
-    href: "/projects",
-    icon: FolderKanban,
-    description: "Create workspaces, keys, members, and project settings.",
-    phase: "Phase 3",
-  },
-  {
-    title: "Issues",
-    href: "/issues",
-    icon: CircleDot,
-    description: "Search, filter, and open issues across your projects.",
-    phase: "Phase 4",
-  },
-  {
-    title: "Backlog",
-    href: "/backlog",
-    icon: SquareKanban,
-    description: "Order epics, stories, and unscheduled work.",
-    phase: "Phase 6",
-  },
-  {
-    title: "Board",
-    href: "/board",
-    icon: Kanban,
-    description: "Move issues across the delivery columns.",
-    phase: "Phase 5",
-  },
-  {
-    title: "Sprints",
-    href: "/sprints",
-    icon: CalendarRange,
-    description: "Plan, start, and complete sprints.",
-    phase: "Phase 6",
-  },
-  {
-    title: "Reports",
-    href: "/reports",
-    icon: ChartColumn,
-    description: "Sprint and issue analytics.",
-    phase: "Phase 9",
-  },
+export const personalNav: NavItem[] = [
+  { title: "Home", href: "/dashboard", icon: House, description: "Open work, deadlines, and recent activity." },
+  { title: "My work", href: "/my-work", icon: ListTodo, description: "Issues assigned to you, reported by you, and due soon." },
+  { title: "Inbox", href: "/notifications", icon: Bell, description: "Assignments, mentions, and comments." },
+  { title: "Invitations", href: "/invitations", icon: Mail, description: "Projects you have been invited to." },
+]
+
+export const workspaceNav: NavItem[] = [
+  { title: "All projects", href: "/projects", icon: FolderKanban, description: "Every project you belong to." },
+  { title: "All issues", href: "/issues", icon: CircleDot, description: "Search and filter issues across projects." },
+  { title: "Reports", href: "/reports", icon: ChartColumn, description: "Totals across your projects." },
 ]
 
 export const utilityNav: NavItem[] = [
-  {
-    title: "Invitations",
-    href: "/invitations",
-    icon: Mail,
-    description: "Accept or reject project invitations sent to you.",
-    phase: "Phase 3",
-  },
-  {
-    title: "Notifications",
-    href: "/notifications",
-    icon: Bell,
-    description: "Assignments, mentions, and changes to your work.",
-    phase: "Phase 8",
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    description: "Profile and workspace preferences.",
-    phase: "Phase 1",
-  },
+  { title: "Settings", href: "/settings", icon: Settings, description: "Profile, theme, and density." },
 ]
 
-export function isNavActive(pathname: string, href: string) {
-  if (href === "/dashboard") {
-    return pathname === "/dashboard"
-  }
+export const mainNav: NavItem[] = [...personalNav, ...workspaceNav]
 
+export type ProjectTab = { slug: string; title: string; icon: LucideIcon }
+
+export const projectTabs: ProjectTab[] = [
+  { slug: "", title: "Overview", icon: LayoutDashboard },
+  { slug: "board", title: "Board", icon: Kanban },
+  { slug: "backlog", title: "Backlog", icon: SquareKanban },
+  { slug: "sprints", title: "Sprints", icon: CalendarRange },
+  { slug: "issues", title: "Issues", icon: CircleDot },
+  { slug: "reports", title: "Reports", icon: ChartColumn },
+  { slug: "members", title: "Members", icon: Users },
+  { slug: "settings", title: "Settings", icon: Settings },
+]
+
+export const lastProjectCookie = "fixtask_last_project"
+
+export function projectHref(projectId: string, slug = "") {
+  return slug ? `/projects/${projectId}/${slug}` : `/projects/${projectId}`
+}
+
+export function isNavActive(pathname: string, href: string) {
+  if (href === "/dashboard") return pathname === "/dashboard"
+  if (href === "/projects") return pathname === "/projects" || pathname === "/projects/new"
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+export function activeProjectId(pathname: string) {
+  const match = /^\/projects\/([0-9a-f-]{36})(?:\/|$)/i.exec(pathname)
+  return match ? match[1] : null
 }

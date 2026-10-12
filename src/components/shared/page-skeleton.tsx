@@ -2,23 +2,22 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function DashboardSkeleton() {
   return (
-    <div className="grid gap-4" role="status" aria-live="polite">
+    <div className="grid gap-6" role="status" aria-live="polite">
       <p className="sr-only">Loading home</p>
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-8 w-24" />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="grid gap-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-8 w-28" />
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Skeleton className="h-56" />
-        <Skeleton className="h-56" />
-        <Skeleton className="h-56" />
-        <Skeleton className="h-56" />
+      <Skeleton className="h-20 rounded-xl" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]">
+        <Skeleton className="h-80 rounded-xl" />
+        <div className="grid gap-6">
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
+        </div>
       </div>
     </div>
   )
@@ -39,13 +38,8 @@ export function MyWorkSkeleton() {
   return (
     <div className="grid gap-3" role="status" aria-live="polite">
       <p className="sr-only">Loading your work</p>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-      </div>
-      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full max-w-xl" />
+      <Skeleton className="h-8 w-full max-w-md" />
       <Skeleton className="h-64 w-full rounded-xl" />
     </div>
   )
@@ -53,19 +47,20 @@ export function MyWorkSkeleton() {
 
 export function ProjectsSkeleton() {
   return (
-    <div className="grid gap-3" role="status" aria-live="polite">
+    <div className="grid gap-5" role="status" aria-live="polite">
       <p className="sr-only">Loading projects</p>
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid gap-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-8 w-28" />
       </div>
-      <Skeleton className="h-8 w-full" />
-      <div className="grid gap-3 md:grid-cols-2">
-        <Skeleton className="h-36 rounded-xl" />
-        <Skeleton className="h-36 rounded-xl" />
+      <div className="flex flex-wrap justify-between gap-3">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-8 w-80" />
       </div>
+      <Skeleton className="h-64 rounded-xl" />
     </div>
   )
 }

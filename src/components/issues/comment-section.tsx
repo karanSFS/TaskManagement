@@ -1,121 +1,108 @@
 "use client"
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useState, useTransition } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useTransition, type FormEvent, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 
+import { useIssueChanged } from "@/components/issues/issue-inline"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import { FormDialog } from "@/components/shared/form-dialog"
-import { RevealButton } from "@/components/shared/pending-ui"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Textarea } from "@/components/ui/textarea"
 import { addComment, deleteComment } from "@/lib/actions/issues"
+import { userInitials } from "@/lib/auth/user"
 import { formatProjectDate } from "@/lib/projects/format"
 import { commentSchema } from "@/lib/validations/issue"
-import type { z } from "zod"
-
-type CommentValues = z.infer<typeof commentSchema>
 
 export function CommentSection({
   issueId,
   currentUserId,
   comments,
   mentionNames,
+  canComment = true,
 }: {
   issueId: string
   currentUserId: string
   comments: { id: string; body: string; createdAt: string; authorId: string; authorName: string }[]
   mentionNames: string[]
+  canComment?: boolean
 }) {
+  const changed = useIssueChanged()
   const [pending, startTransition] = useTransition()
-  const [composerOpen, setComposerOpen] = useState(false)
+  const [body, setBody] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const form = useForm<CommentValues>({
-    resolver: zodResolver(commentSchema),
-    defaultValues: { body: "" },
-  })
+
+  function submit(event?: FormEvent) {
+    event?.preventDefault()
+    const parsed = commentSchema.safeParse({ body })
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Write a comment")
+      return
+    }
+    setError(null)
+    startTransition(async () => {
+      const result = await addComment(issueId, parsed.data)
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      setBody("")
+      changed()
+    })
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) submit()
+  }
 
   return (
     <section className="grid min-w-0 gap-3">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">Comments</h2>
-        <RevealButton type="button" size="sm" variant="outline" onReveal={() => setComposerOpen(true)}>
-          Add comment
-        </RevealButton>
-      </div>
-      {comments.length === 0 ? <p className="text-sm text-muted-foreground">No comments yet.</p> : null}
-      <ul className="grid gap-2">
+      {comments.length === 0 ? <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p> : null}
+      {comments.length >= 50 ? <p className="text-xs text-muted-foreground">Older comments are not listed.</p> : null}
+      <ul className="grid gap-3">
         {comments.map((comment) => (
-          <li key={comment.id} className="rounded-lg border bg-card px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                {comment.authorName} · {formatProjectDate(comment.createdAt)}
-              </p>
-              {comment.authorId === currentUserId ? (
-                <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setDeleteId(comment.id)}>
-                  Delete
-                </Button>
-              ) : null}
+          <li key={comment.id} className="flex min-w-0 gap-3">
+            <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-medium text-accent-foreground">
+              {userInitials(comment.authorName)}
+            </span>
+            <div className="min-w-0 flex-1 rounded-lg border bg-card px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs">
+                  <span className="font-medium">{comment.authorName}</span>
+                  <span className="text-muted-foreground"> · {formatProjectDate(comment.createdAt)}</span>
+                </p>
+                {comment.authorId === currentUserId ? (
+                  <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => setDeleteId(comment.id)}>
+                    Delete
+                  </Button>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{comment.body}</p>
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{comment.body}</p>
           </li>
         ))}
       </ul>
-      <FormDialog
-        open={composerOpen}
-        onOpenChange={(next) => {
-          if (!next) form.reset({ body: "" })
-          setComposerOpen(next)
-        }}
-        title="Add comment"
-        description="Mention a teammate with @Name."
-        dirty={form.formState.isDirty}
-        pending={pending}
-      >
-      <Form {...form}>
-        <form
-          className="grid gap-3"
-          onSubmit={form.handleSubmit((values) => {
-            startTransition(async () => {
-              const result = await addComment(issueId, values)
-              if (result?.error) {
-                toast.error(result.error)
-                return
-              }
-              form.reset({ body: "" })
-              setComposerOpen(false)
-              toast.success(result?.success ?? "Comment added.")
-            })
-          })}
-        >
-          <FormField
-            control={form.control}
-            name="body"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea placeholder="Add a comment. Mention a teammate with @Name." aria-label="Comment" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+
+      {canComment ? (
+        <form onSubmit={submit} className="grid gap-2">
+          <Textarea
+            aria-label="Add a comment"
+            value={body}
+            rows={3}
+            maxLength={8000}
+            placeholder={mentionNames.length > 0 ? `Add a comment… Mention a teammate with @${mentionNames[0]}` : "Add a comment…"}
+            onChange={(event) => setBody(event.target.value)}
+            onKeyDown={onKeyDown}
           />
-          {mentionNames.length > 0 ? (
-            <p className="text-xs text-muted-foreground">Teammates: {mentionNames.join(", ")}</p>
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" disabled={pending} onClick={() => setComposerOpen(false)}>
-              Cancel
+          {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" disabled={pending || body.trim() === ""}>
+              {pending ? "Posting…" : "Comment"}
             </Button>
-            <Button type="submit" disabled={pending} size="sm">
-              {pending ? "Sending…" : "Add comment"}
-            </Button>
+            <span className="hidden text-xs text-muted-foreground sm:inline">⌘/Ctrl + Enter to post</span>
           </div>
         </form>
-      </Form>
-      </FormDialog>
+      ) : null}
+
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(next) => { if (!next) setDeleteId(null) }}
@@ -134,6 +121,7 @@ export function CommentSection({
             }
             toast.success(result?.success ?? "Comment deleted.")
             setDeleteId(null)
+            changed()
           })
         }}
       />

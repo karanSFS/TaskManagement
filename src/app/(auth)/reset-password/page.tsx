@@ -24,10 +24,13 @@ export default function ResetPasswordPage() {
       <CardContent>
         <ResetPasswordForm />
       </CardContent>
-      <CardFooter className="text-xs text-muted-foreground">
-        <Link href="/forgot-password" className="font-medium text-info hover:underline">
-          Request a new link
-        </Link>
+      <CardFooter>
+        <p className="text-xs text-muted-foreground">
+          Link expired?{" "}
+          <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+            Request a new one
+          </Link>
+        </p>
       </CardFooter>
     </Card>
   )

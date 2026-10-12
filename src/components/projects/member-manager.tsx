@@ -1,6 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { UserPlus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
@@ -33,19 +34,26 @@ export function MemberManager({
   projectId,
   members,
   canManage,
+  canInvite = canManage,
   actorRole,
 }: {
   projectId: string
   members: MemberRow[]
   canManage: boolean
+  canInvite?: boolean
   actorRole: ProjectRole
 }) {
   const ownerCount = members.filter((member) => member.role === "owner").length
   const roles = projectRoles.filter((role) => actorRole === "owner" || role !== "owner")
 
   return (
-    <div className="grid gap-4">
-      {canManage ? <AddMemberForm projectId={projectId} roles={roles} /> : null}
+    <section aria-labelledby="members-heading" className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="members-heading" className="text-sm font-semibold tracking-tight">
+          Members <span className="text-muted-foreground">({members.length})</span>
+        </h2>
+        {canInvite ? <AddMemberForm projectId={projectId} roles={roles} /> : null}
+      </div>
       <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
         {members.map((member) => (
           <MemberItem
@@ -59,7 +67,7 @@ export function MemberManager({
           />
         ))}
       </ul>
-    </div>
+    </section>
   )
 }
 
@@ -92,8 +100,9 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
 
   return (
     <>
-    <RevealButton type="button" className="w-fit" onReveal={() => setOpen(true)}>
-      Invite
+    <RevealButton type="button" size="sm" onReveal={() => setOpen(true)}>
+      <UserPlus />
+      Invite people
     </RevealButton>
     <FormDialog
       open={open}
@@ -101,8 +110,8 @@ function AddMemberForm({ projectId, roles }: { projectId: string; roles: Project
         if (!next) form.reset({ email: "", role: "member" })
         setOpen(next)
       }}
-      title="Invite"
-      description="They receive an email and have 7 days to accept. A new person can create a FixTask account from that link."
+      title="Invite to this project"
+      description="We email them a link that works for 7 days. Someone new can create a FixTask account from it. You can also copy the link from the list below."
       dirty={form.formState.isDirty}
       pending={pending}
     >

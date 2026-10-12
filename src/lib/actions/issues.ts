@@ -1,6 +1,8 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { unstable_rethrow } from "next/navigation"
+
+import { refreshWorkspace } from "@/lib/actions/revalidate"
 
 import { actionError } from "@/lib/actions/result"
 import { type ActionState } from "@/lib/auth/paths"
@@ -17,6 +19,7 @@ import {
   addIssueLink as addIssueLinkRecord,
   removeIssueLink as removeIssueLinkRecord,
   changeIssueStatus as changeIssueStatusRecord,
+  reopenIssue as reopenIssueRecord,
   deleteIssue as deleteIssueRecord,
   deleteIssueComment,
   removeIssueLabel,
@@ -25,18 +28,8 @@ import {
 } from "@/lib/services/issue.service"
 import { commentSchema, changeStatusSchema, createIssueSchema, issueLinkSchema, labelNameSchema, subtaskSchema, updateIssueSchema } from "@/lib/validations/issue"
 
-function refreshIssue(issueId: string, projectId: string | null) {
-  revalidatePath("/issues")
-  revalidatePath("/my-work")
-  revalidatePath("/dashboard")
-  revalidatePath("/board")
-  revalidatePath(`/issues/${issueId}`)
-  revalidatePath("/projects")
-  if (projectId) revalidatePath(`/projects/${projectId}`)
-}
-
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {
-  if (!(error instanceof AppError)) throw error
+  unstable_rethrow(error)
   return actionError(error, operation, userId, resourceId)
 }
 
@@ -49,7 +42,7 @@ export async function createIssue(values: unknown): Promise<ActionState> {
 
   try {
     const created = await createIssueRecord(user.id, parsed.data)
-    refreshIssue(created.id, created.project_id)
+    refreshWorkspace()
     return { success: "Issue created.", href: `/issues/${created.id}` }
   } catch (error) {
     return failure(error, "createIssue", user.id, parsed.data.projectId)
@@ -85,6 +78,7 @@ export async function loadIssueDrawer(issueId: string) {
     if (!issue) return { error: "That issue could not be found." }
     return {
       issue,
+      userId: user.id,
       types: catalog.types,
       statuses: catalog.statuses,
       priorities: catalog.priorities,
@@ -102,8 +96,8 @@ export async function updateIssue(issueId: string, values: unknown): Promise<Act
   if (!user) return { error: "Sign in to update this issue." }
 
   try {
-    const updated = await updateIssueRecord(user.id, issueId, parsed.data)
-    refreshIssue(issueId, updated.project_id)
+    await updateIssueRecord(user.id, issueId, parsed.data)
+    refreshWorkspace()
     return { success: "Issue saved." }
   } catch (error) {
     return failure(error, "updateIssue", user.id, issueId)
@@ -118,11 +112,27 @@ export async function changeIssueStatus(issueId: string, statusId: string): Prom
   if (!user) return { error: "Sign in to move this issue." }
 
   try {
-    const updated = await changeIssueStatusRecord(user.id, parsed.data.issueId, parsed.data.statusId)
-    refreshIssue(parsed.data.issueId, updated.project_id)
+    await changeIssueStatusRecord(user.id, parsed.data.issueId, parsed.data.statusId)
+    refreshWorkspace()
     return { success: "Status updated." }
   } catch (error) {
     return failure(error, "changeIssueStatus", user.id, issueId)
+  }
+}
+
+export async function reopenIssue(issueId: string, values: unknown): Promise<ActionState> {
+  const parsed = commentSchema.safeParse(values)
+  if (!parsed.success) return { error: "Write a note about what is still broken." }
+
+  const user = await getCurrentUser()
+  if (!user) return { error: "Sign in to reopen this issue." }
+
+  try {
+    await reopenIssueRecord(user.id, issueId, parsed.data.body)
+    refreshWorkspace()
+    return { success: "Issue reopened. Your note is on the ticket." }
+  } catch (error) {
+    return failure(error, "reopenIssue", user.id, issueId)
   }
 }
 
@@ -132,7 +142,7 @@ export async function deleteIssue(issueId: string): Promise<ActionState> {
 
   try {
     const projectId = await deleteIssueRecord(issueId)
-    refreshIssue(issueId, projectId)
+    refreshWorkspace()
     return { success: "Issue deleted.", href: projectId ? `/projects/${projectId}` : "/issues" }
   } catch (error) {
     return failure(error, "deleteIssue", user.id, issueId)
@@ -147,8 +157,8 @@ export async function addComment(issueId: string, values: unknown): Promise<Acti
   if (!user) return { error: "Sign in to comment." }
 
   try {
-    const projectId = await addIssueComment(user.id, issueId, parsed.data.body)
-    refreshIssue(issueId, projectId)
+    await addIssueComment(user.id, issueId, parsed.data.body)
+    refreshWorkspace()
     return { success: "Comment added." }
   } catch (error) {
     return failure(error, "addComment", user.id, issueId)
@@ -160,8 +170,8 @@ export async function deleteComment(issueId: string, commentId: string): Promise
   if (!user) return { error: "Sign in to delete a comment." }
 
   try {
-    const projectId = await deleteIssueComment(user.id, issueId, commentId)
-    refreshIssue(issueId, projectId)
+    await deleteIssueComment(user.id, issueId, commentId)
+    refreshWorkspace()
     return { success: "Comment deleted." }
   } catch (error) {
     return failure(error, "deleteComment", user.id, issueId)
@@ -176,8 +186,8 @@ export async function addLabel(issueId: string, values: unknown): Promise<Action
   if (!user) return { error: "Sign in to add a label." }
 
   try {
-    const projectId = await addIssueLabel(user.id, issueId, parsed.data.name)
-    refreshIssue(issueId, projectId)
+    await addIssueLabel(user.id, issueId, parsed.data.name)
+    refreshWorkspace()
     return { success: "Label added." }
   } catch (error) {
     return failure(error, "addLabel", user.id, issueId)
@@ -189,8 +199,8 @@ export async function removeLabel(issueId: string, labelId: string): Promise<Act
   if (!user) return { error: "Sign in to remove a label." }
 
   try {
-    const projectId = await removeIssueLabel(issueId, labelId)
-    refreshIssue(issueId, projectId)
+    await removeIssueLabel(issueId, labelId)
+    refreshWorkspace()
     return { success: "Label removed." }
   } catch (error) {
     return failure(error, "removeLabel", user.id, issueId)
@@ -205,9 +215,8 @@ export async function createSubtask(issueId: string, values: unknown): Promise<A
   if (!user) return { error: "Sign in to add a subtask." }
 
   try {
-    const created = await createSubtaskRecord(user.id, issueId, parsed.data.title)
-    refreshIssue(issueId, created.project_id)
-    refreshIssue(created.id, created.project_id)
+    await createSubtaskRecord(user.id, issueId, parsed.data.title)
+    refreshWorkspace()
     return { success: "Subtask added." }
   } catch (error) {
     return failure(error, "createSubtask", user.id, issueId)
@@ -222,9 +231,8 @@ export async function addIssueLink(issueId: string, values: unknown): Promise<Ac
   if (!user) return { error: "Sign in to link an issue." }
 
   try {
-    const projectId = await addIssueLinkRecord(user.id, issueId, parsed.data.targetIssueId, parsed.data.linkType)
-    refreshIssue(issueId, projectId)
-    refreshIssue(parsed.data.targetIssueId, projectId)
+    await addIssueLinkRecord(user.id, issueId, parsed.data.targetIssueId, parsed.data.linkType)
+    refreshWorkspace()
     return { success: "Link added." }
   } catch (error) {
     return failure(error, "addIssueLink", user.id, issueId)
@@ -236,30 +244,32 @@ export async function removeIssueLink(issueId: string, linkId: string): Promise<
   if (!user) return { error: "Sign in to remove a link." }
 
   try {
-    const projectId = await removeIssueLinkRecord(linkId, issueId)
-    refreshIssue(issueId, projectId)
+    await removeIssueLinkRecord(linkId, issueId)
+    refreshWorkspace()
     return { success: "Link removed." }
   } catch (error) {
     return failure(error, "removeIssueLink", user.id, issueId)
   }
 }
 
-export async function searchIssues(query: string) {
+export async function searchIssues(query: string): Promise<{ issues: { id: string; key: string; title: string; projectName: string }[]; error?: string }> {
   const user = await getCurrentUser()
   const needle = query.trim()
-  if (!user || needle.length < 2) return []
+  if (!user || needle.length < 2) return { issues: [] }
 
   try {
     const result = await listIssues(user.id, 1, { query: needle, limit: 8 })
-    return result.items.map((issue) => ({
-      id: issue.id,
-      key: `${issue.projectKey}-${issue.number}`,
-      title: issue.title,
-      projectName: issue.projectName,
-    }))
+    return {
+      issues: result.items.map((issue) => ({
+        id: issue.id,
+        key: `${issue.projectKey}-${issue.number}`,
+        title: issue.title,
+        projectName: issue.projectName,
+      })),
+    }
   } catch (error) {
-    if (!(error instanceof AppError)) throw error
-    return []
+    if (error instanceof AppError) return { issues: [], error: error.message }
+    return { issues: [], error: "Search failed. Try again." }
   }
 }
 

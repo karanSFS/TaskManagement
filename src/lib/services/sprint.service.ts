@@ -35,6 +35,7 @@ export type SprintWorkspace = {
   projectName: string
   projectKey: string
   archived: boolean
+  canManage: boolean
   backlog: SprintIssue[]
   sprints: SprintSummary[]
   truncated: boolean
@@ -71,6 +72,9 @@ function raiseSprintError(message: string): never {
   if (message.includes("Sprint must belong")) {
     throw new AppError("INVALID_SPRINT", "That sprint belongs to another project.", 422)
   }
+  if (message.includes("Archived projects are read-only")) {
+    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before changing sprints.", 422)
+  }
   if (message.includes("Completed sprints cannot change")) {
     throw new AppError("INVALID_SPRINT", "Completed sprints stay as a record. Plan a new sprint for new work.", 422)
   }
@@ -89,7 +93,6 @@ function asStatus(value: string): SprintSummary["status"] {
 }
 
 export async function getSprintWorkspace(userId: string, projectId: string): Promise<SprintWorkspace | null> {
-  void userId
   const supabase = await createClient()
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -100,7 +103,7 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
   if (projectError) throw new DatabaseError("Could not load sprints.")
   if (!project) return null
 
-  const [sprints, scheduled, backlog] = await Promise.all([
+  const [sprints, scheduled, backlog, membership] = await Promise.all([
     supabase
       .from("sprints")
       .select("id, name, goal, status, start_date, end_date, created_at")
@@ -120,6 +123,7 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
       .is("sprint_id", null)
       .order("updated_at", { ascending: false })
       .limit(issueLimit),
+    supabase.from("project_members").select("role").eq("project_id", projectId).eq("user_id", userId).maybeSingle(),
   ])
 
   if (
@@ -128,10 +132,13 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
     scheduled.error ||
     scheduled.data === null ||
     backlog.error ||
-    backlog.data === null
+    backlog.data === null ||
+    membership.error
   ) {
     throw new DatabaseError("Could not load sprints.")
   }
+
+  const role = membership.data?.role
 
   const scheduledIssues = scheduled.data.map(toSprintIssue)
   const rank = { active: 0, future: 1, completed: 2 }
@@ -141,6 +148,7 @@ export async function getSprintWorkspace(userId: string, projectId: string): Pro
     projectName: project.name,
     projectKey: project.key,
     archived: Boolean(project.archived_at),
+    canManage: role === "owner" || role === "admin",
     truncated: scheduled.data.length >= issueLimit || backlog.data.length >= issueLimit,
     backlog: backlog.data.map((issue) => toSprintIssue(issue)),
     sprints: sprints.data
@@ -235,6 +243,29 @@ export async function updateSprintRecord(userId: string, input: UpdateSprintValu
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have permission to change this sprint.")
   }
   return data[0]
+}
+
+export async function deleteSprintRecord(userId: string, sprintId: string) {
+  void userId
+  const supabase = await createClient()
+  const { data: existing, error: readError } = await supabase
+    .from("sprints")
+    .select("id, status")
+    .eq("id", sprintId)
+    .maybeSingle()
+
+  if (readError) throw new DatabaseError("Could not load the sprint.")
+  if (!existing) throw new NotFoundError("SPRINT_NOT_FOUND", "Sprint could not be found.")
+  if (existing.status !== "future") {
+    throw new AppError("INVALID_SPRINT", "Only a planned sprint can be deleted. Complete the active sprint instead.", 422)
+  }
+
+  const { error } = await supabase.from("sprints").delete().eq("id", sprintId)
+  if (error) raiseSprintError(error.message)
+
+  const { data: still, error: stillError } = await supabase.from("sprints").select("id").eq("id", sprintId).maybeSingle()
+  if (stillError) throw new DatabaseError("Could not confirm the sprint was deleted.")
+  if (still) throw new AuthorizationError("PROJECT_ACCESS_DENIED", "Only an owner or admin can delete a planned sprint.")
 }
 
 export type HomeSprint = {

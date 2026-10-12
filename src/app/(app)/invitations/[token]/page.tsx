@@ -1,10 +1,12 @@
+import { MailX } from "lucide-react"
 import Link from "next/link"
 import { Suspense } from "react"
 import { z } from "zod"
 
 import { InvitationCard } from "@/components/invitations/invitation-actions"
-import { PageHeader } from "@/components/layout/page-header"
+import { EmptyState } from "@/components/shared/empty-state"
 import { DetailSkeleton } from "@/components/shared/page-skeleton"
+import { Button } from "@/components/ui/button"
 import { getInvitationPreview } from "@/lib/services/invitation.service"
 
 export const metadata = { title: "Invitation" }
@@ -22,16 +24,19 @@ async function InvitationTokenContent({ params }: { params: Promise<{ token: str
   const invitation = z.uuid().safeParse(token).success ? await getInvitationPreview(token) : null
 
   return (
-    <div className="grid max-w-xl gap-4">
-      <PageHeader title="Invitation" description="Accept to join the project, or reject it." />
+    <div className="mx-auto grid w-full max-w-lg gap-4 pt-2 md:pt-8">
       {invitation ? (
-        <InvitationCard invitation={invitation} />
+        <InvitationCard invitation={invitation} switchTo={`/invitations/${token}`} />
       ) : (
-        <p className="text-sm text-muted-foreground">This invitation link is not valid.</p>
+        <EmptyState
+          icon={MailX}
+          title="This link doesn't work"
+          description="The invitation may have been mistyped or removed. Ask the person who invited you to send a new one."
+        />
       )}
-      <Link href="/invitations" className="text-sm font-medium text-info hover:underline">
-        All invitations
-      </Link>
+      <Button asChild variant="ghost" className="justify-self-center">
+        <Link href="/invitations">See all invitations</Link>
+      </Button>
     </div>
   )
 }

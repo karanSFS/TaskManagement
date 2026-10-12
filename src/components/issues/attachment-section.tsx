@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
 
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { deleteAttachment, openAttachment, saveAttachment } from "@/lib/actions/attachments"
 import { formatFileSize } from "@/lib/notifications/format"
@@ -15,13 +16,16 @@ export function AttachmentSection({
   issueId,
   projectId,
   attachments,
+  readOnly = false,
 }: {
   issueId: string
   projectId: string
   attachments: IssueAttachment[]
+  readOnly?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [pending, startTransition] = useTransition()
+  const [removeId, setRemoveId] = useState<string | null>(null)
 
   function onFile(file: File | undefined) {
     if (!file) return
@@ -46,15 +50,26 @@ export function AttachmentSection({
         return
       }
 
-      const result = await saveAttachment({ issueId, storagePath, fileName: file.name })
-      if (result.error) toast.error(result.error)
-      if (inputRef.current) inputRef.current.value = ""
+      try {
+        const result = await saveAttachment({ issueId, storagePath, fileName: file.name })
+        if (result?.error) {
+          await supabase.storage.from("attachments").remove([storagePath])
+          toast.error(result.error)
+          return
+        }
+        toast.success(result?.success ?? "File attached.")
+      } catch {
+        await supabase.storage.from("attachments").remove([storagePath])
+        toast.error("Could not save that file. Try again.")
+      } finally {
+        if (inputRef.current) inputRef.current.value = ""
+      }
     })
   }
 
   return (
     <section className="grid min-w-0 gap-2">
-      <h2 className="text-sm font-medium">Attachments</h2>
+      <h2 className="text-sm font-semibold">Attachments</h2>
       {attachments.length === 0 ? <p className="text-sm text-muted-foreground">No files yet.</p> : null}
       {attachments.length > 0 ? (
         <ul className="grid gap-1">
@@ -79,18 +94,13 @@ export function AttachmentSection({
               </button>
               <span className="shrink-0 text-xs text-muted-foreground">{formatFileSize(file.sizeBytes)}</span>
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{formatProjectDate(file.createdAt)}</span>
-              {file.canDelete ? (
+              {file.canDelete && !readOnly ? (
                 <Button
                   type="button"
                   size="xs"
                   variant="ghost"
                   disabled={pending}
-                  onClick={() => {
-                    startTransition(async () => {
-                      const result = await deleteAttachment(issueId, file.id)
-                      if (result.error) toast.error(result.error)
-                    })
-                  }}
+                  onClick={() => setRemoveId(file.id)}
                 >
                   Remove
                 </Button>
@@ -99,6 +109,7 @@ export function AttachmentSection({
           ))}
         </ul>
       ) : null}
+      {readOnly ? null : (
       <label className="text-xs text-muted-foreground">
         <input
           ref={inputRef}
@@ -110,6 +121,31 @@ export function AttachmentSection({
         />
         Images, PDF, text, and Office files up to 50 MB.
       </label>
+      )}
+      <ConfirmDialog
+        open={removeId !== null}
+        onOpenChange={(next) => {
+          if (!next) setRemoveId(null)
+        }}
+        title="Remove this file?"
+        description="The file is deleted from the issue. This cannot be undone."
+        confirmLabel="Remove file"
+        pending={pending}
+        destructive
+        onConfirm={() => {
+          if (!removeId) return
+          const attachmentId = removeId
+          startTransition(async () => {
+            const result = await deleteAttachment(issueId, attachmentId)
+            if (result?.error) {
+              toast.error(result.error)
+              return
+            }
+            toast.success(result?.success ?? "File removed.")
+            setRemoveId(null)
+          })
+        }}
+      />
     </section>
   )
 }

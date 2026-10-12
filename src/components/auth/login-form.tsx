@@ -22,16 +22,17 @@ import { loginSchema, type LoginValues } from "@/lib/validations/auth"
 type LoginFormProps = {
   nextPath: string
   confirmError?: boolean
+  defaultEmail?: string
 }
 
-export function LoginForm({ nextPath, confirmError = false }: LoginFormProps) {
+export function LoginForm({ nextPath, confirmError = false, defaultEmail = "" }: LoginFormProps) {
   const [pending, startTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(
     confirmError ? "That confirmation link is invalid or has expired." : null,
   )
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: defaultEmail, password: "" },
   })
 
   function onSubmit(values: LoginValues) {

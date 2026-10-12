@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
@@ -16,6 +17,7 @@ export function ArchiveProjectButton({
   archived: boolean
   compact?: boolean
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -28,6 +30,7 @@ export function ArchiveProjectButton({
       }
       toast.success(result?.success ?? "Project updated.")
       setOpen(false)
+      router.refresh()
     })
   }
 
@@ -46,7 +49,7 @@ export function ArchiveProjectButton({
         open={open}
         onOpenChange={setOpen}
         title="Archive this project?"
-        description="Nobody can file new issues until it is restored."
+        description="The project becomes read-only. Nobody can create issues, invite people, or plan sprints until it is restored."
         confirmLabel="Archive project"
         pending={pending}
         destructive

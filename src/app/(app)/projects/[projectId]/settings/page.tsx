@@ -68,12 +68,14 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
         <div>
           <h2 className="text-sm font-medium">Project settings</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {canEdit
-              ? "Name, key, description, icon, and lead."
-              : "Only the lead, an owner, or an admin can change these settings."}
+            {project.archivedAt
+              ? "Restore the project before changing its name, key, description, icon, or lead."
+              : canEdit
+                ? "Name, key, description, icon, and lead."
+                : "Only the lead, an owner, or an admin can change these settings."}
           </p>
         </div>
-        {canEdit && leadId ? (
+        {canEdit && leadId && !project.archivedAt ? (
           <EditProjectButton
             projectId={project.id}
             members={project.members.map((member) => ({ id: member.userId, name: member.name }))}
@@ -92,8 +94,8 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
           <h2 className="text-sm font-medium">{project.archivedAt ? "Restore project" : "Archive project"}</h2>
           <p className="text-sm text-muted-foreground">
             {project.archivedAt
-              ? "Restoring the project lets members file new issues again. Existing issues stay as they are."
-              : "Archived projects stay readable, but nobody can file new issues in them."}
+              ? "Restoring lets members edit issues, invite people, and plan sprints again."
+              : "Archived projects stay readable. Members can still finish a sprint that is already running. Restore the project to edit issues again."}
           </p>
           <div className="flex flex-wrap gap-2">
             <ArchiveProjectButton projectId={project.id} archived={Boolean(project.archivedAt)} />

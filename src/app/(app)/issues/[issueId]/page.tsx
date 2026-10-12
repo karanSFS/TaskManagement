@@ -1,22 +1,23 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
+import { ChevronRight } from "lucide-react"
 
+import { ActivityTabs } from "@/components/issues/activity-tabs"
 import { AttachmentSection } from "@/components/issues/attachment-section"
 import { CommentSection } from "@/components/issues/comment-section"
 import { DeleteIssueButton } from "@/components/issues/delete-issue-button"
-import { EditIssueButton } from "@/components/issues/issue-editor"
+import { CopyLinkButton, InlineDescription, InlineTitle, IssueDetailsPanel, IssueValuesProvider } from "@/components/issues/issue-inline"
 import { LabelEditor } from "@/components/issues/label-editor"
+import { ReopenIssue } from "@/components/issues/reopen-issue"
 import { LinkSection } from "@/components/issues/link-section"
 import { SubtaskSection } from "@/components/issues/subtask-section"
 import { DetailSkeleton } from "@/components/shared/page-skeleton"
-import { PriorityMark } from "@/components/shared/priority-mark"
-import { StatusChip } from "@/components/shared/visual"
-import { Badge } from "@/components/ui/badge"
 import { getCurrentUser } from "@/lib/auth/session"
-import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
-import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
+import { projectHref } from "@/lib/config/nav"
+import { formatProjectDate, issueKey } from "@/lib/projects/format"
 import { listIssueAttachments } from "@/lib/services/attachment.service"
+import { getIssue, getIssueCatalog } from "@/lib/services/issue.service"
 
 export const metadata = { title: "Issue" }
 
@@ -39,111 +40,112 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
   ])
   if (!issue) notFound()
 
-  const status = catalog.statuses.find((item) => item.id === issue.statusId)
-  const priority = catalog.priorities.find((item) => item.id === issue.priorityId)
-  const type = catalog.types.find((item) => item.id === issue.typeId)
-  const assignee = issue.members.find((member) => member.id === issue.assigneeId)?.name ?? "Unassigned"
-  const today = new Date().toISOString().slice(0, 10)
-  const overdue = issue.dueDate !== null && issue.dueDate < today
+  const key = issueKey(issue.projectKey, issue.number)
 
   return (
-    <div className="grid min-w-0 gap-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/projects/${issue.projectId}`} className="text-sm text-muted-foreground hover:underline">
+    <IssueValuesProvider
+      issueId={issue.id}
+      canEdit={issue.canEdit && !issue.projectArchived}
+      initial={{
+        title: issue.title,
+        description: issue.description,
+        issueTypeId: issue.typeId,
+        statusId: issue.statusId,
+        priorityId: issue.priorityId,
+        assigneeId: issue.assigneeId,
+        dueDate: issue.dueDate,
+      }}
+    >
+      <div className="mx-auto grid w-full max-w-6xl min-w-0 gap-5">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+            <Link href={projectHref(issue.projectId, "board")} className="truncate hover:text-foreground hover:underline">
               {issue.projectName}
             </Link>
-            <Badge variant="outline">{issueKey(issue.projectKey, issue.number)}</Badge>
-            {type ? <Badge variant="outline">{type.name}</Badge> : null}
-            {status ? <StatusChip name={status.name} category={status.category} /> : null}
-            {priority ? <PriorityMark name={priority.name} /> : null}
-            {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
+            <ChevronRight className="size-3.5 shrink-0" />
+            <span className="shrink-0 font-mono text-xs text-foreground">{key}</span>
+          </nav>
+          <div className="flex shrink-0 items-center gap-2">
+            <CopyLinkButton path={`/issues/${issue.id}`} />
+            {issue.canDelete && !issue.projectArchived ? <DeleteIssueButton issueId={issue.id} issueKey={key} /> : null}
           </div>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight [overflow-wrap:anywhere]">{issue.title}</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {issue.canEdit ? (
-            <EditIssueButton
-              issueId={issue.id}
-              types={catalog.types}
-              statuses={catalog.statuses}
-              priorities={catalog.priorities}
-              members={issue.members}
-              defaultValues={{
-                title: issue.title,
-                description: issue.description,
-                issueTypeId: issue.typeId,
-                statusId: issue.statusId,
-                priorityId: issue.priorityId,
-                assigneeId: issue.assigneeId,
-                dueDate: issue.dueDate,
-              }}
-            />
-          ) : null}
-          {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} /> : null}
-        </div>
-      </div>
-      <dl className="grid min-w-0 gap-2 rounded-xl border bg-card p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <Meta label="Reporter" value={issue.reporterName} hint="Created this issue" />
-        <Meta label="Assignee" value={assignee} hint="Responsible for the work" />
-        <Meta label="Updated" value={formatProjectDate(issue.updatedAt)} />
-        <Meta label="Due" value={issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "No due date"} alert={overdue} />
-      </dl>
-      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <div className="grid min-w-0 gap-4">
-          <section className="min-w-0 rounded-xl border bg-card px-3 py-3 shadow-sm">
-            <h2 className="text-sm font-medium">Description</h2>
-            <p className={issue.description ? "mt-2 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]" : "mt-2 text-sm text-muted-foreground"}>
-              {issue.description || "No description yet."}
-            </p>
-          </section>
-          <CommentSection
-            issueId={issue.id}
-            currentUserId={user.id}
-            comments={issue.comments}
-            mentionNames={issue.members.filter((member) => member.id !== user.id).map((member) => member.name)}
-          />
-          <SubtaskSection
-            issueId={issue.id}
-            projectKey={issue.projectKey}
-            parent={issue.parent}
-            subtasks={issue.subtasks}
-            archived={issue.projectArchived}
-          />
-        </div>
-        <aside className="grid min-w-0 content-start gap-4">
-          <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} />
-          <AttachmentSection issueId={issue.id} projectId={issue.projectId} attachments={attachments} />
-          <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} />
-          <section className="rounded-xl border bg-card px-3 py-3 shadow-sm">
-            <h2 className="text-sm font-medium">History</h2>
-            {issue.history.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No activity yet.</p> : null}
-            <ol className="relative mt-3 grid gap-0 border-l border-border pl-4">
-              {issue.history.map((entry) => (
-                <li key={entry.id} className="relative pb-4 last:pb-0">
-                  <span className="absolute top-1.5 -left-[1.2rem] size-2 rounded-full bg-primary ring-4 ring-card" />
-                  <p className="break-words text-sm">{entry.summary}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.actorName} · {formatProjectDate(entry.createdAt)}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </aside>
-      </div>
-    </div>
-  )
-}
 
-function Meta({ label, value, hint, alert = false }: { label: string; value: string; hint?: string; alert?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={alert ? "mt-0.5 truncate text-sm font-medium text-destructive" : "mt-0.5 truncate text-sm font-medium"} title={value}>{value}</dd>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
+        {issue.projectArchived ? (
+          <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+            This project is archived, so the issue is read-only.
+          </p>
+        ) : null}
+
+        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="grid min-w-0 gap-6">
+            <InlineTitle className="text-2xl" />
+            <InlineDescription />
+            <ReopenIssue
+              issueId={issue.id}
+              statuses={catalog.statuses}
+              assigneeName={issue.members.find((member) => member.id === issue.assigneeId)?.name}
+            />
+            <SubtaskSection
+              issueId={issue.id}
+              projectKey={issue.projectKey}
+              parent={issue.parent}
+              subtasks={issue.subtasks}
+              archived={issue.projectArchived}
+            />
+            <LinkSection issueId={issue.id} links={issue.links} choices={issue.linkChoices} readOnly={issue.projectArchived} />
+            <AttachmentSection issueId={issue.id} projectId={issue.projectId} attachments={attachments} readOnly={issue.projectArchived} />
+            <ActivityTabs
+              commentCount={issue.comments.length}
+              comments={
+                <CommentSection
+                  issueId={issue.id}
+                  currentUserId={user.id}
+                  comments={issue.comments}
+                  canComment={!issue.projectArchived}
+                  mentionNames={issue.members.filter((member) => member.id !== user.id).map((member) => member.name)}
+                />
+              }
+              history={
+                issue.history.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No changes recorded yet.</p>
+                ) : (
+                  <ol className="grid gap-3">
+                    {issue.history.map((entry) => (
+                      <li key={entry.id} className="grid gap-0.5 border-l-2 pl-3">
+                        <p className="text-sm [overflow-wrap:anywhere]">{entry.summary}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.actorName} · {formatProjectDate(entry.createdAt)}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                )
+              }
+            />
+          </div>
+
+          <aside className="grid min-w-0 gap-5 lg:sticky lg:top-4">
+            <div className="rounded-xl border bg-card p-4">
+              <h2 className="mb-3 text-sm font-semibold">Details</h2>
+              <IssueDetailsPanel
+                types={catalog.types}
+                statuses={catalog.statuses}
+                priorities={catalog.priorities}
+                members={issue.members}
+                currentUserId={user.id}
+                reporterName={issue.reporterName}
+                createdAt={issue.createdAt}
+                updatedAt={issue.updatedAt}
+              />
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <LabelEditor issueId={issue.id} labels={issue.labels} projectLabels={issue.projectLabels} readOnly={issue.projectArchived} />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </IssueValuesProvider>
   )
 }
 

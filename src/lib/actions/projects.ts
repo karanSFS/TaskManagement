@@ -1,12 +1,12 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
+import { unstable_rethrow } from "next/navigation"
 
 import { actionError } from "@/lib/actions/result"
+import { refreshWorkspace } from "@/lib/actions/revalidate"
 import { type ActionState } from "@/lib/auth/paths"
 import { getCurrentUser } from "@/lib/auth/session"
-import { AppError } from "@/lib/errors/app-error"
 import { sendInvitationEmail } from "@/lib/mail/invitation"
 import {
   createInvitationRecord,
@@ -40,22 +40,8 @@ async function siteOrigin() {
   return host ? `${proto}://${host}` : "http://localhost:3000"
 }
 
-function projectPaths(projectId: string) {
-  revalidatePath("/projects")
-  revalidatePath(`/projects/${projectId}`)
-  revalidatePath(`/projects/${projectId}/members`)
-  revalidatePath(`/projects/${projectId}/settings`)
-  revalidatePath("/issues")
-  revalidatePath("/issues/new")
-  revalidatePath("/my-work")
-  revalidatePath("/dashboard")
-  revalidatePath("/board")
-}
-
 function failure(error: unknown, operation: string, userId?: string, resourceId?: string): ActionState {
-  if (!(error instanceof AppError)) {
-    throw error
-  }
+  unstable_rethrow(error)
 
   return actionError(error, operation, userId, resourceId)
 }
@@ -75,7 +61,7 @@ export async function createProject(values: unknown): Promise<ActionState> {
     const projectId = await createProjectRecord(user.id, parsed.data)
     if (!projectId) return { error: "The project was created, but it could not be opened." }
 
-    projectPaths(projectId)
+    refreshWorkspace()
     return { success: "Project created.", href: `/projects/${projectId}` }
   } catch (error) {
     return failure(error, "createProject", user.id)
@@ -95,7 +81,7 @@ export async function updateProject(projectId: string, values: unknown): Promise
 
   try {
     await updateProjectRecord(user.id, projectId, parsed.data)
-    projectPaths(projectId)
+    refreshWorkspace()
     return { success: "Project saved." }
   } catch (error) {
     return failure(error, "updateProject", user.id, projectId)
@@ -110,7 +96,7 @@ export async function setProjectArchived(projectId: string, archived: boolean): 
 
   try {
     await archiveProjectRecord(user.id, projectId, archived)
-    projectPaths(projectId)
+    refreshWorkspace()
     return { success: archived ? "Project archived." : "Project restored." }
   } catch (error) {
     return failure(error, "setProjectArchived", user.id, projectId)
@@ -131,12 +117,9 @@ export async function addProjectMember(projectId: string, values: unknown): Prom
   try {
     const invite = await createInvitationRecord(projectId, parsed.data.email, parsed.data.role)
     const mailError = await sendInvitationEmail(invite, await siteOrigin())
-    projectPaths(projectId)
-    revalidatePath("/invitations")
-    revalidatePath("/dashboard")
-    revalidatePath("/notifications")
+    refreshWorkspace()
     if (mailError) return { error: mailError }
-    return { success: "Invitation sent." }
+    return { success: invite.resent ? "Invitation sent. The previous link no longer works." : "Invitation sent." }
   } catch (error) {
     return failure(error, "addProjectMember", user.id, projectId)
   }
@@ -152,10 +135,9 @@ export async function resendProjectInvitation(projectId: string, invitationId: s
     if (!invite) return { error: "This invitation is no longer open." }
     const sent = await createInvitationRecord(projectId, invite.email, invite.role)
     const mailError = await sendInvitationEmail(sent, await siteOrigin())
-    projectPaths(projectId)
-    revalidatePath("/invitations")
+    refreshWorkspace()
     if (mailError) return { error: mailError }
-    return { success: "Invitation sent." }
+    return { success: "Invitation sent. The previous link no longer works." }
   } catch (error) {
     return failure(error, "resendProjectInvitation", user.id, projectId)
   }
@@ -167,9 +149,7 @@ export async function revokeProjectInvitation(projectId: string, invitationId: s
 
   try {
     await revokeInvitationRecord(invitationId)
-    projectPaths(projectId)
-    revalidatePath("/invitations")
-    revalidatePath("/notifications")
+    refreshWorkspace()
     return { success: "Invitation cancelled." }
   } catch (error) {
     return failure(error, "revokeProjectInvitation", user.id, projectId)
@@ -184,15 +164,12 @@ export async function respondToInvitation(invitationId: string, decision: "accep
     const mine = user.email ? await listMyInvitations(user.email) : []
     const invite = mine.find((item) => item.id === invitationId)
     await respondToInvitationRecord(invitationId, decision)
-    revalidatePath("/invitations")
-    revalidatePath("/projects")
-    revalidatePath("/dashboard")
-    revalidatePath("/notifications")
-    revalidatePath("/my-work")
-    if (invite) revalidatePath(`/projects/${invite.projectId}`)
+    refreshWorkspace()
     return {
-      success: decision === "accept" ? "Invitation accepted." : "Invitation rejected.",
-      href: decision === "accept" && invite ? `/projects/${invite.projectId}` : undefined,
+      success: decision === "accept"
+        ? `You joined ${invite?.projectName ?? "the project"}.`
+        : "Invitation declined.",
+      href: decision === "accept" && invite ? `/projects/${invite.projectId}/board` : undefined,
     }
   } catch (error) {
     return failure(error, "respondToInvitation", user.id, invitationId)
@@ -216,7 +193,7 @@ export async function updateMemberRole(
 
   try {
     await updateMemberRoleRecord(user.id, projectId, membershipId, parsed.data.role)
-    projectPaths(projectId)
+    refreshWorkspace()
     return { success: "Role updated." }
   } catch (error) {
     return failure(error, "updateMemberRole", user.id, projectId)
@@ -231,7 +208,7 @@ export async function deleteArchivedProject(projectId: string): Promise<ActionSt
 
   try {
     await deleteArchivedProjectRecord(user.id, projectId)
-    projectPaths(projectId)
+    refreshWorkspace()
     return { success: "Project deleted.", href: "/projects" }
   } catch (error) {
     return failure(error, "deleteArchivedProject", user.id, projectId)
@@ -246,7 +223,7 @@ export async function removeProjectMember(projectId: string, membershipId: strin
 
   try {
     const removedUserId = await removeProjectMemberRecord(user.id, projectId, membershipId)
-    projectPaths(projectId)
+    refreshWorkspace()
     if (removedUserId === user.id) {
       return { success: "You left the project.", href: "/projects" }
     }

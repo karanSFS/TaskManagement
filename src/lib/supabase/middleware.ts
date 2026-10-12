@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { isRecoveryAmr, nextFromLocation, signedInLanding } from "@/lib/auth/paths"
 import type { Database } from "@/types/database.types"
 
 import { getSupabaseEnv } from "./env"
@@ -15,6 +16,10 @@ function isGuestOnly(pathname: string) {
 
 function isAuthCallback(pathname: string) {
   return pathname === "/auth" || pathname.startsWith("/auth/")
+}
+
+function isPublic(pathname: string) {
+  return pathname.startsWith("/join/")
 }
 
 export async function updateSession(request: NextRequest) {
@@ -44,20 +49,49 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (!user && !isGuestOnly(pathname) && !isAuthCallback(pathname)) {
+  const invitationToken = /^\/invitations\/([0-9a-f-]{36})$/i.exec(pathname)?.[1]
+  if (!user && invitationToken) {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = `/join/${invitationToken}`
+    redirectUrl.search = ""
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  if (pathname === "/reset-password") {
+    const redirectUrl = request.nextUrl.clone()
+    if (!user) {
+      redirectUrl.pathname = "/forgot-password"
+      redirectUrl.search = ""
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    const { data } = await supabase.auth.getClaims()
+    if (!isRecoveryAmr(data?.claims.amr)) {
+      redirectUrl.pathname = "/dashboard"
+      redirectUrl.search = ""
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    return supabaseResponse
+  }
+
+  if (!user && !isGuestOnly(pathname) && !isAuthCallback(pathname) && !isPublic(pathname)) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/login"
     redirectUrl.search = ""
-    if (pathname !== "/") {
-      redirectUrl.searchParams.set("next", pathname)
+    const next = nextFromLocation(pathname, request.nextUrl.search)
+    if (next !== "/dashboard") {
+      redirectUrl.searchParams.set("next", next)
     }
     return NextResponse.redirect(redirectUrl)
   }
 
   if (user && isGuestOnly(pathname)) {
+    const landing = signedInLanding(request.nextUrl.searchParams.get("next"))
+    const destination = new URL(landing, request.url)
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = "/dashboard"
-    redirectUrl.search = ""
+    redirectUrl.pathname = destination.pathname
+    redirectUrl.search = destination.search
     return NextResponse.redirect(redirectUrl)
   }
 

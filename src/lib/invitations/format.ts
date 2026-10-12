@@ -9,7 +9,7 @@ export type InvitationMail = {
 }
 
 export function invitationMessage(invite: InvitationMail, origin: string) {
-  const link = `${origin}/invitations/${invite.token}`
+  const link = `${origin}/join/${invite.token}`
   const expires = new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
@@ -20,8 +20,7 @@ export function invitationMessage(invite: InvitationMail, origin: string) {
   const text = [
     `${invite.inviterName} invited you to ${invite.projectName} (${invite.projectKey}) as ${role}.`,
     `This invitation expires on ${expires}.`,
-    "Open it in FixTask to accept or reject it.",
-    "Use a FixTask account with this email address. If you do not have one yet, create it from the invitation page.",
+    "Open the link to accept or decline. If you do not have a FixTask account yet, you can create one there with this email address.",
     link,
   ].join("\n\n")
   const html = invitationHtml({
@@ -54,11 +53,11 @@ function invitationHtml(details: {
               <td style="padding:28px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td width="28" height="28" align="center" valign="middle" style="width:28px;height:28px;background:#4f46e5;border-radius:8px;color:#ffffff;font-size:16px;font-weight:700;line-height:28px;">&#10003;</td>
+                    <td width="28" height="28" align="center" valign="middle" style="width:28px;height:28px;background:#0f766e;border-radius:8px;color:#ffffff;font-size:16px;font-weight:700;line-height:28px;">&#10003;</td>
                     <td style="padding-left:8px;font-size:15px;font-weight:600;letter-spacing:-0.02em;color:#18181b;">FixTask</td>
                   </tr>
                 </table>
-                <p style="margin:22px 0 0;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">Project invitation</p>
+                <p style="margin:22px 0 0;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#64748b;">Project invitation</p>
                 <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;font-weight:600;letter-spacing:-0.02em;color:#18181b;">${details.inviterName} invited you to ${details.projectName}</h1>
                 <p style="margin:12px 0 0;font-size:14px;line-height:1.5;color:#3f3f46;">Join as ${details.role}. This invitation expires on ${details.expires}.</p>
               </td>
@@ -68,11 +67,11 @@ function invitationHtml(details: {
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6fa;border-radius:12px;">
                   <tr>
                     <td style="padding:14px 16px;">
-                      <p style="margin:0;font-size:12px;color:#71717a;">Project</p>
-                      <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#18181b;">${details.projectName} <span style="font-weight:500;color:#71717a;">${details.projectKey}</span></p>
+                      <p style="margin:0;font-size:12px;color:#64748b;">Project</p>
+                      <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#18181b;">${details.projectName} <span style="font-weight:500;color:#64748b;">${details.projectKey}</span></p>
                     </td>
                     <td style="padding:14px 16px;" align="right">
-                      <p style="margin:0;font-size:12px;color:#71717a;">Role</p>
+                      <p style="margin:0;font-size:12px;color:#64748b;">Role</p>
                       <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#18181b;">${details.role}</p>
                     </td>
                   </tr>
@@ -83,18 +82,18 @@ function invitationHtml(details: {
               <td style="padding:22px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td bgcolor="#4f46e5" style="border-radius:8px;">
+                    <td bgcolor="#0f766e" style="border-radius:8px;">
                       <a href="${details.link}" style="display:inline-block;padding:12px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;line-height:1;color:#ffffff;text-decoration:none;border-radius:8px;">Review invitation</a>
                     </td>
                   </tr>
                 </table>
-                <p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#71717a;">Or open this link:<br /><a href="${details.link}" style="color:#4f46e5;word-break:break-all;">${details.link}</a></p>
+                <p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#64748b;">Or open this link:<br /><a href="${details.link}" style="color:#0f766e;word-break:break-all;">${details.link}</a></p>
               </td>
             </tr>
             <tr>
               <td style="padding:8px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                <p style="margin:0;font-size:13px;line-height:1.5;color:#3f3f46;">Use a FixTask account with this email address. If you do not have one yet, create it from the invitation page. Signing up does not accept the invitation for you.</p>
-                <p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#71717a;">FixTask — Plan together. Solve faster. Ship better.</p>
+                <p style="margin:0;font-size:13px;line-height:1.5;color:#3f3f46;">No FixTask account yet? Open the link and create one with this email address, then accept the invitation.</p>
+                <p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#64748b;">FixTask — Plan together. Solve faster. Ship better.</p>
               </td>
             </tr>
           </table>

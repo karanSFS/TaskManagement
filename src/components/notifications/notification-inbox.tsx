@@ -11,11 +11,9 @@ import { markAllRead, markRead } from "@/lib/actions/notifications"
 import { formatNotificationTime, notificationHref, notificationLabel } from "@/lib/notifications/format"
 import type { NotificationItem } from "@/lib/services/notification.service"
 
-export function NotificationInbox({ items, unread }: { items: NotificationItem[]; unread: boolean }) {
+export function NotificationInbox({ items, unread, hasUnread }: { items: NotificationItem[]; unread: boolean; hasUnread: boolean }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const unreadCount = items.filter((item) => !item.readAt).length
-
   function markOne(id: string, href?: string) {
     startTransition(async () => {
       const result = await markRead(id)
@@ -30,28 +28,29 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={() => {
-            startTransition(async () => {
-              const result = await markAllRead()
-              if (result.error) {
-                toast.error(result.error)
-                return
-              }
-              toast.success(result.success ?? "Notifications marked read.")
-              router.refresh()
-            })
-          }}
-        >
-          {pending ? "Updating…" : "Mark all read"}
-        </Button>
-        {unreadCount > 0 ? <p className="text-xs text-muted-foreground">{unreadCount} unread on this page</p> : null}
-      </div>
+      {hasUnread ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => {
+              startTransition(async () => {
+                const result = await markAllRead()
+                if (result.error) {
+                  toast.error(result.error)
+                  return
+                }
+                toast.success(result.success ?? "Notifications marked read.")
+                router.refresh()
+              })
+            }}
+          >
+            {pending ? "Updating…" : "Mark all read"}
+          </Button>
+        </div>
+      ) : null}
       {items.length === 0 ? (
         <EmptyState
           icon={Bell}
@@ -59,9 +58,9 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
           description={unread ? "You are caught up." : "Assignments, mentions, and comments will show up here."}
         />
       ) : (
-        <ul className="grid gap-2">
+        <ul className="divide-y overflow-hidden rounded-xl border bg-card">
           {items.map((item) => (
-            <li key={item.id} className={`rounded-xl border bg-card shadow-sm ${item.readAt ? "" : "border-l-2 border-l-primary"}`}>
+            <li key={item.id} className={item.readAt ? "" : "border-l-2 border-l-primary"}>
               <div className="flex items-start gap-3 px-3 py-3">
                 <span className="mt-0.5 text-muted-foreground">{kindIcon(item.kind)}</span>
                 <button
@@ -89,8 +88,8 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
                   ) : null}
                 </button>
                 {item.readAt ? null : (
-                  <Button type="button" variant="ghost" size="xs" disabled={pending} onClick={() => markOne(item.id)}>
-                    Mark read
+                  <Button type="button" variant="ghost" size="icon-sm" className="shrink-0" disabled={pending} aria-label="Mark as read" onClick={() => markOne(item.id)}>
+                    <Check />
                   </Button>
                 )}
               </div>

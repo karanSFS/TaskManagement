@@ -31,8 +31,20 @@ const previewSchema = z.object({
   emailMatches: z.boolean(),
 })
 
+const landingSchema = z.object({
+  email: z.string(),
+  role: z.string(),
+  status: z.string(),
+  expiresAt: z.string(),
+  projectName: z.string(),
+  projectKey: z.string(),
+  inviterName: z.string(),
+  hasAccount: z.boolean(),
+})
+
 export type InvitationPayload = z.infer<typeof payloadSchema>
 export type InvitationPreview = z.infer<typeof previewSchema>
+export type InvitationLanding = z.infer<typeof landingSchema>
 
 export type ProjectInvitation = {
   id: string
@@ -91,17 +103,19 @@ export async function respondToInvitationRecord(invitationId: string, decision: 
   if (error) raiseProjectWriteError(error.message)
 }
 
-export async function listProjectInvitations(projectId: string): Promise<ProjectInvitation[]> {
+export type SentInvitation = ProjectInvitation & { token: string }
+
+export async function listProjectInvitations(projectId: string): Promise<SentInvitation[]> {
   await syncInvitations()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("project_invitations")
-    .select("id, email, role, status, created_at, expires_at, project_id, inviter:profiles!project_invitations_invited_by_fkey(display_name), project:projects!project_invitations_project_id_fkey(name, key)")
+    .select("id, token, email, role, status, created_at, expires_at, project_id, inviter:profiles!project_invitations_invited_by_fkey(display_name), project:projects!project_invitations_project_id_fkey(name, key)")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
 
   if (error || data === null) throw new DatabaseError("Could not load invitations.")
-  return data.flatMap(mapInvitation)
+  return data.flatMap((row) => mapInvitation(row).map((invitation) => ({ ...invitation, token: row.token })))
 }
 
 export async function listMyInvitations(email: string): Promise<ProjectInvitation[]> {
@@ -124,6 +138,16 @@ export async function getInvitationPreview(token: string): Promise<InvitationPre
   if (error) raiseProjectWriteError(error.message)
   if (data === null) return null
   const parsed = previewSchema.safeParse(data)
+  if (!parsed.success) throw new DatabaseError("Could not load this invitation.")
+  return parsed.data
+}
+
+export async function getInvitationLanding(token: string): Promise<InvitationLanding | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("invitation_landing", { target_token: token })
+  if (error) throw new DatabaseError("Could not load this invitation.")
+  if (data === null) return null
+  const parsed = landingSchema.safeParse(data)
   if (!parsed.success) throw new DatabaseError("Could not load this invitation.")
   return parsed.data
 }

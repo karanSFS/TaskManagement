@@ -6,9 +6,6 @@ import { SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-export const filterFieldClass =
-  "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-
 export function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid gap-1.5 text-sm">
