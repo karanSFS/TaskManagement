@@ -37,22 +37,24 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-card/95 px-3 shadow-sm backdrop-blur md:px-4">
+      <header className="sticky top-0 z-20 flex h-12 min-w-0 items-center gap-1 border-b bg-card/95 px-2 shadow-sm backdrop-blur sm:gap-2 sm:px-3 md:px-4">
         <SidebarTrigger />
         <Button
           variant="outline"
           className="h-8 min-w-0 flex-1 justify-start rounded-full bg-muted/70 px-3 text-muted-foreground sm:max-w-md"
+          aria-label="Search issues and pages"
           onClick={openSearch}
         >
           <Search />
-          <span className="truncate">Search issues and pages</span>
-          <Kbd className="ml-auto font-mono">/</Kbd>
+          <span className="truncate">Search</span>
+          <span className="hidden truncate md:inline">issues and pages</span>
+          <Kbd className="ml-auto hidden font-mono sm:inline-flex">/</Kbd>
         </Button>
         <CreateIssueDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
           trigger={(busy) => (
-            <Button className="ml-auto" disabled={busy} aria-busy={busy || undefined} onClick={openCreate}>
+            <Button className="ml-auto shrink-0" aria-label="Create issue" disabled={busy} aria-busy={busy || undefined} onClick={openCreate}>
               {busy ? <Loader2 className="animate-spin" /> : <Plus />}
               <span className="hidden sm:inline">Create issue</span>
               <Kbd className="hidden bg-primary-foreground/15 font-mono text-primary-foreground sm:inline-flex">C</Kbd>
@@ -60,7 +62,9 @@ export function AppChrome({ user, notifications }: AppChromeProps) {
           )}
         />
         <NotificationBell userId={user.id} unread={notifications.unread} items={notifications.items} />
-        <ThemeToggle />
+        <div className="hidden sm:block">
+          <ThemeToggle />
+        </div>
         <UserMenu user={user} />
       </header>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />

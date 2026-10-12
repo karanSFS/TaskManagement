@@ -49,11 +49,12 @@ export function SubtaskSection({
         )}
       </div>
       {parent ? (
-        <p className="text-xs text-muted-foreground">
-          Subtask of{" "}
-          <Link href={`/issues/${parent.id}`} className="inline-flex items-center gap-1 text-foreground hover:underline">
+        <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <span className="shrink-0">Subtask of</span>
+          <Link href={`/issues/${parent.id}`} className="inline-flex min-w-0 items-center gap-1 text-foreground hover:underline">
             <LinkPending />
-            {issueKey(projectKey, parent.number)} {parent.title}
+            <span className="shrink-0">{issueKey(projectKey, parent.number)}</span>
+            <span className="truncate">{parent.title}</span>
           </Link>
         </p>
       ) : null}

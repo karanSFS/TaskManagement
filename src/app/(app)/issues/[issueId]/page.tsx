@@ -60,9 +60,9 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             {priority ? <PriorityMark name={priority.name} /> : null}
             {issue.projectArchived ? <Badge variant="secondary">Project archived</Badge> : null}
           </div>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight">{issue.title}</h1>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight [overflow-wrap:anywhere]">{issue.title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {issue.canEdit ? (
             <EditIssueButton
               issueId={issue.id}
@@ -84,17 +84,17 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
           {issue.canDelete ? <DeleteIssueButton issueId={issue.id} issueKey={issueKey(issue.projectKey, issue.number)} /> : null}
         </div>
       </div>
-      <dl className="grid gap-2 rounded-xl border bg-card p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid min-w-0 gap-2 rounded-xl border bg-card p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Reporter" value={issue.reporterName} hint="Created this issue" />
         <Meta label="Assignee" value={assignee} hint="Responsible for the work" />
         <Meta label="Updated" value={formatProjectDate(issue.updatedAt)} />
         <Meta label="Due" value={issue.dueDate ? (overdue ? `Overdue · ${formatDueDate(issue.dueDate)}` : formatDueDate(issue.dueDate)) : "No due date"} alert={overdue} />
       </dl>
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="grid min-w-0 gap-4">
-          <section className="rounded-xl border bg-card px-3 py-3 shadow-sm">
+          <section className="min-w-0 rounded-xl border bg-card px-3 py-3 shadow-sm">
             <h2 className="text-sm font-medium">Description</h2>
-            <p className={issue.description ? "mt-2 whitespace-pre-wrap text-sm" : "mt-2 whitespace-pre-wrap text-sm text-muted-foreground"}>
+            <p className={issue.description ? "mt-2 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]" : "mt-2 text-sm text-muted-foreground"}>
               {issue.description || "No description yet."}
             </p>
           </section>
@@ -139,9 +139,9 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
 
 function Meta({ label, value, hint, alert = false }: { label: string; value: string; hint?: string; alert?: boolean }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={alert ? "mt-0.5 text-sm font-medium text-destructive" : "mt-0.5 text-sm font-medium"}>{value}</dd>
+      <dd className={alert ? "mt-0.5 truncate text-sm font-medium text-destructive" : "mt-0.5 truncate text-sm font-medium"} title={value}>{value}</dd>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )

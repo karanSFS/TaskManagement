@@ -91,6 +91,10 @@ export function raiseProjectWriteError(message: string): never {
     throw new AppError("MEMBER_EXISTS", "That account is already a member", 409)
   }
 
+  if (message.includes("Archived projects cannot take new members")) {
+    throw new AppError("INVALID_PROJECT", "This project is archived. Restore it before inviting people.", 422)
+  }
+
   if (message.includes("cannot manage members")) {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You cannot manage members of this project")
   }

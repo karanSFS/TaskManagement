@@ -153,7 +153,7 @@ async function MyWorkContent({ searchParams }: { searchParams: Promise<WorkSearc
       {work.total === 0 ? (
         <EmptyWork view={view} filtered={filtered} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+        <div className="min-w-0 overflow-x-auto rounded-xl border bg-card shadow-sm">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b text-xs text-muted-foreground">
               <tr>

@@ -125,7 +125,13 @@ export function IssueBoard({
             ))}
           </div>
         </div>
-        <DragOverlay>{activeCard ? <CardView card={activeCard} projectKey={projectKey} overlay /> : null}</DragOverlay>
+        <DragOverlay>
+          {activeCard ? (
+            <div className="w-[min(18rem,80vw)]">
+              <CardView card={activeCard} projectKey={projectKey} overlay />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   )
@@ -151,7 +157,7 @@ function Column({
       id={`board-column-${column.id}`}
       ref={setNodeRef}
       aria-label={column.name}
-      className={`flex max-h-[calc(100svh-16rem)] w-72 shrink-0 flex-col gap-2 rounded-xl border border-t-2 bg-muted/30 p-2 shadow-sm ${columnTone(column.category)} ${isOver ? "border-ring bg-primary/5" : ""}`}
+      className={`flex max-h-[calc(100svh-16rem)] min-h-64 w-[min(18rem,80vw)] shrink-0 flex-col gap-2 rounded-xl border border-t-2 bg-muted/30 p-2 shadow-sm ${columnTone(column.category)} ${isOver ? "border-ring bg-primary/5" : ""}`}
     >
       <header className="flex items-center justify-between px-1">
         <h2 className="flex items-center gap-1.5 text-sm font-medium">

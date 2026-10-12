@@ -579,48 +579,6 @@ export type Database = {
         }
         Relationships: []
       }
-      project_members: {
-        Row: {
-          created_at: string
-          id: string
-          project_id: string
-          role: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          project_id: string
-          role: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          project_id?: string
-          role?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_invitations: {
         Row: {
           created_at: string
@@ -674,6 +632,48 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -827,34 +827,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      remove_project_member: {
-        Args: { target_membership_id: string }
-        Returns: string
-      }
-      create_project_invitation: {
-        Args: {
-          member_email: string
-          member_role: string
-          target_project_id: string
-        }
-        Returns: Json
-      }
-      invitation_preview: {
-        Args: { target_token: string }
-        Returns: Json
-      }
-      respond_to_invitation: {
-        Args: { decision: string; target_invitation_id: string }
-        Returns: undefined
-      }
-      revoke_project_invitation: {
-        Args: { target_invitation_id: string }
-        Returns: undefined
-      }
-      sync_invitations: {
-        Args: never
-        Returns: undefined
-      }
       add_project_member: {
         Args: {
           member_email: string
@@ -864,6 +836,15 @@ export type Database = {
         Returns: string
       }
       complete_sprint: { Args: { target_sprint_id: string }; Returns: string }
+      create_project_invitation: {
+        Args: {
+          member_email: string
+          member_role: string
+          target_project_id: string
+        }
+        Returns: Json
+      }
+      invitation_preview: { Args: { target_token: string }; Returns: Json }
       project_issue_counts: {
         Args: never
         Returns: {
@@ -871,6 +852,10 @@ export type Database = {
           open_count: number
           project_id: string
         }[]
+      }
+      remove_project_member: {
+        Args: { target_membership_id: string }
+        Returns: string
       }
       report_issue_groups: {
         Args: { target_project_id?: string }
@@ -891,6 +876,14 @@ export type Database = {
           sprint_name: string
           sprint_status: string
         }[]
+      }
+      respond_to_invitation: {
+        Args: { decision: string; target_invitation_id: string }
+        Returns: undefined
+      }
+      revoke_project_invitation: {
+        Args: { target_invitation_id: string }
+        Returns: undefined
       }
       search_issues: {
         Args: {
@@ -919,6 +912,7 @@ export type Database = {
         }[]
       }
       start_sprint: { Args: { target_sprint_id: string }; Returns: string }
+      sync_invitations: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

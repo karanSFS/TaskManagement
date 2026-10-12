@@ -224,8 +224,8 @@ async function IssueList({ searchParams }: { searchParams: Promise<IssueSearch> 
 
 function FilterChip({ label, href }: { label: string; href: string }) {
   return (
-    <Link href={href} className="inline-flex items-center rounded-full border bg-card px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
-      {label}
+    <Link href={href} className="inline-flex max-w-full items-center rounded-full border bg-card px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
+      <span className="max-w-48 truncate">{label}</span>
       <span className="ml-1" aria-hidden>×</span>
       <span className="sr-only">Remove filter</span>
     </Link>

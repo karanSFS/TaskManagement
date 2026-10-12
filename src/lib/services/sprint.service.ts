@@ -71,6 +71,12 @@ function raiseSprintError(message: string): never {
   if (message.includes("Sprint must belong")) {
     throw new AppError("INVALID_SPRINT", "That sprint belongs to another project.", 422)
   }
+  if (message.includes("Completed sprints cannot change")) {
+    throw new AppError("INVALID_SPRINT", "Completed sprints stay as a record. Plan a new sprint for new work.", 422)
+  }
+  if (message.includes("Use start or complete") || message.includes("New sprints start as planned")) {
+    throw new AppError("INVALID_SPRINT", "Use Start sprint or Complete sprint to change its status.", 422)
+  }
   if (message.includes("row-level security") || message.includes("permission denied")) {
     throw new AuthorizationError("PROJECT_ACCESS_DENIED", "You don't have permission to change this sprint.")
   }

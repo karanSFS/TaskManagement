@@ -190,7 +190,7 @@ async function HomeContent() {
                 <li key={entry.id} className="relative pb-4 last:pb-0">
                   <span className="absolute top-1.5 -left-[1.2rem] size-2 rounded-full bg-primary ring-4 ring-background" />
                   <IssueOpenButton issueId={entry.issueId} className="grid w-full text-left">
-                    <span className="text-sm">{entry.summary}</span>
+                    <span className="text-sm [overflow-wrap:anywhere]">{entry.summary}</span>
                     <span className="mt-0.5 text-xs text-muted-foreground">
                       {entry.actorName} · {entry.issueKey} · {formatProjectDate(entry.createdAt)}
                     </span>
@@ -238,13 +238,13 @@ function WorkRow({ issue, today }: { issue: MyWorkItem; today: string }) {
   return (
     <li className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/40">
       <span className={`size-2 shrink-0 rounded-full ${priorityDot(issue.priority)}`} title={issue.priority} />
-      <Link href={`/issues/${issue.id}`} className="w-24 shrink-0 font-mono text-xs text-muted-foreground hover:underline">
+      <Link href={`/issues/${issue.id}`} className="w-20 shrink-0 truncate font-mono text-xs text-muted-foreground hover:underline sm:w-24">
         {issueKey(issue.projectKey, issue.number)}
       </Link>
       <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left text-sm font-medium">{issue.title}</IssueOpenButton>
-      <span className="hidden text-xs text-muted-foreground md:inline">{issue.projectName}</span>
-      <span className="hidden rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">{issue.status}</span>
-      <span className={late ? "text-xs font-medium text-destructive" : "text-xs text-muted-foreground"}>
+      <span className="hidden max-w-32 truncate text-xs text-muted-foreground md:inline">{issue.projectName}</span>
+      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">{issue.status}</span>
+      <span className={late ? "shrink-0 text-xs font-medium text-destructive" : "shrink-0 text-xs text-muted-foreground"}>
         {issue.dueDate ? formatDueDate(issue.dueDate) : "No due date"}
       </span>
     </li>

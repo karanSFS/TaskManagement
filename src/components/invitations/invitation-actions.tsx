@@ -44,8 +44,8 @@ export function InvitationCard({
   }
 
   return (
-    <article className="grid gap-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div>
+    <article className="grid min-w-0 gap-3 rounded-xl border bg-card p-4 shadow-sm [overflow-wrap:anywhere]">
+      <div className="min-w-0">
         <p className="text-xs font-medium tracking-wide text-muted-foreground">{invitation.projectKey}</p>
         <h2 className="text-base font-semibold tracking-tight">{invitation.projectName}</h2>
         <p className="mt-1 text-sm text-muted-foreground">

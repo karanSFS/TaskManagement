@@ -59,7 +59,7 @@ export function CommentSection({
                 </Button>
               ) : null}
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm">{comment.body}</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{comment.body}</p>
           </li>
         ))}
       </ul>

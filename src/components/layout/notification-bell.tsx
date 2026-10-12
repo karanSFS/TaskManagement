@@ -64,7 +64,7 @@ export function NotificationBell({
           ) : null}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-1.5rem))]">
         <div className="flex items-center justify-between gap-2 px-2 py-1.5">
           <p className="text-sm font-medium">Notifications</p>
           {unread > 0 ? (

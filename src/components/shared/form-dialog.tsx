@@ -43,10 +43,10 @@ export function FormSheet(props: FrameProps) {
         <Sheet open={props.open} onOpenChange={request}>
           <SheetContent className={cn("w-full overflow-y-auto data-[side=right]:sm:max-w-xl", props.className)}>
             <SheetHeader>
-              <SheetTitle>{props.title}</SheetTitle>
-              <SheetDescription>{props.description}</SheetDescription>
+              <SheetTitle className="pr-8 [overflow-wrap:anywhere]">{props.title}</SheetTitle>
+              <SheetDescription className="[overflow-wrap:anywhere]">{props.description}</SheetDescription>
             </SheetHeader>
-            <div className="grid gap-4 px-4 pb-4">{props.children}</div>
+            <div className="grid min-w-0 gap-4 px-4 pb-4">{props.children}</div>
           </SheetContent>
         </Sheet>
       )}

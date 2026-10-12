@@ -187,7 +187,18 @@ function raiseIssueWriteError(message: string): never {
   if (message.includes("cannot be its own parent")) {
     throw new AppError("INVALID_ISSUE", "An issue cannot be its own parent.", 422)
   }
-  if (message.includes("cannot move between projects") || message.includes("numbers cannot change")) {
+  if (message.includes("Assignee must be a project member")) {
+    throw new AppError("INVALID_ASSIGNEE", "The assignee has to be a member of this project.", 422)
+  }
+  if (message.includes("Linked issues must belong to the same project")) {
+    throw new AppError("INVALID_LINK", "Linked issues have to be in the same project.", 422)
+  }
+  if (
+    message.includes("cannot move between projects") ||
+    message.includes("numbers cannot change") ||
+    message.includes("reporter cannot change") ||
+    message.includes("Comments cannot move")
+  ) {
     throw new AppError("INVALID_ISSUE", "That change is not allowed.", 422)
   }
   if (message.includes("row-level security") || message.includes("permission denied")) {

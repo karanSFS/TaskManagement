@@ -50,9 +50,9 @@ async function ProjectFrame({
           <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
             <ProjectIcon name={project.icon} />
           </span>
-          <h1 className="truncate text-xl font-semibold tracking-tight">{project.name}</h1>
-          <Badge variant="outline">{project.key}</Badge>
-          {project.archivedAt ? <Badge variant="secondary">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+          <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight" title={project.name}>{project.name}</h1>
+          <Badge variant="outline" className="shrink-0">{project.key}</Badge>
+          {project.archivedAt ? <Badge variant="secondary" className="shrink-0">Archived</Badge> : <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">Active</Badge>}
         </div>
       </div>
       <ProjectNav projectId={project.id} />

@@ -78,7 +78,7 @@ export function NotificationInbox({ items, unread }: { items: NotificationItem[]
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{notificationLabel(item.kind)}</span>
                     <time dateTime={item.createdAt}>{formatNotificationTime(item.createdAt)}</time>
                   </span>
-                  <span className={item.readAt ? "text-sm" : "text-sm font-semibold"}>
+                  <span className={item.readAt ? "line-clamp-2 text-sm [overflow-wrap:anywhere]" : "line-clamp-2 text-sm font-semibold [overflow-wrap:anywhere]"}>
                     {item.issueKey ? <span className="mr-2 font-mono text-xs font-normal text-muted-foreground">{item.issueKey}</span> : null}
                     {item.issueTitle ?? item.projectName ?? "Notification"}
                   </span>

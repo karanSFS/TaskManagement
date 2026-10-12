@@ -99,7 +99,7 @@ function SprintDrop({ sprint }: { sprint: { id: string; name: string } }) {
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-full border px-3 py-1 text-xs transition-colors duration-200 ${isOver ? "border-primary bg-primary/10" : "bg-card"}`}
+      className={`max-w-full truncate rounded-full border px-3 py-1 text-xs transition-colors duration-200 ${isOver ? "border-primary bg-primary/10" : "bg-card"}`}
     >
       {sprint.name}
     </div>
@@ -131,7 +131,7 @@ function BacklogRow({
       <IssueLine projectKey={projectKey} issue={issue} />
       {sprints.length > 0 ? (
         <select
-          className={fieldClass}
+          className={`${fieldClass} w-full min-w-0 sm:w-44`}
           aria-label={`Add ${issue.title} to a sprint`}
           defaultValue=""
           disabled={pending}
@@ -207,7 +207,7 @@ function SprintCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-medium">{sprint.name}</h2>
+            <h2 className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">{sprint.name}</h2>
             <Badge variant={sprint.status === "active" ? "default" : "secondary"}>{sprintLabel(sprint.status)}</Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{dates}</p>
@@ -245,7 +245,7 @@ function SprintCard({
           {sprint.status === "active" ? <CompleteSprintButton projectId={projectId} sprintId={sprint.id} /> : null}
         </div>
       </div>
-      {sprint.goal ? <p className="text-sm">{sprint.goal}</p> : <p className="text-sm text-muted-foreground">No goal yet.</p>}
+      {sprint.goal ? <p className="text-sm [overflow-wrap:anywhere]">{sprint.goal}</p> : <p className="text-sm text-muted-foreground">No goal yet.</p>}
       <ProgressMeter done={done} open={total - done} barClass={sprint.status === "completed" ? "bg-chart-2" : "bg-primary"} />
       {total > 0 ? (
         <ul className="divide-y rounded-lg border">
@@ -270,7 +270,7 @@ function SprintCard({
 function IssueLine({ projectKey, issue }: { projectKey: string; issue: SprintIssue }) {
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-      <Link href={`/issues/${issue.id}`} className="inline-flex w-28 shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:underline">
+      <Link href={`/issues/${issue.id}`} className="inline-flex w-24 shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:underline sm:w-28">
         <LinkPending />
         {issueKey(projectKey, issue.number)}
       </Link>
@@ -279,7 +279,7 @@ function IssueLine({ projectKey, issue }: { projectKey: string; issue: SprintIss
       </IssueOpenButton>
       <StatusChip name={issue.status} done={issue.done} />
       <PriorityMark name={issue.priority} />
-      <span className="text-xs text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</span>
+      <span className="max-w-36 truncate text-xs text-muted-foreground">{issue.assigneeName ?? "Unassigned"}</span>
     </div>
   )
 }

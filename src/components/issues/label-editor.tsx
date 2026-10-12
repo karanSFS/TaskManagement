@@ -58,7 +58,8 @@ export function LabelEditor({
               type="button"
               disabled={pending}
               aria-pressed={on}
-              className="rounded-md border px-2 py-1 text-xs"
+              className="max-w-full truncate rounded-md border px-2 py-1 text-xs"
+              title={label.name}
               style={{ borderColor: label.color, background: on ? label.color : "transparent", color: on ? "white" : "inherit" }}
               onClick={() => toggle(label.id, on)}
             >
