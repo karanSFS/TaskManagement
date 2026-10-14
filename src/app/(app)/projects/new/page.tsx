@@ -11,7 +11,7 @@ export default function NewProjectPage() {
     <div className="grid gap-4">
       <PageHeader
         title="New project"
-        description="Name the workspace and choose a short key. You become the owner and the lead."
+        description="Name the workspace and choose a key. You become the owner and the lead."
         actions={
           <Button asChild variant="outline">
             <Link href="/projects">Back</Link>

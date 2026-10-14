@@ -74,6 +74,10 @@ export function raiseProjectWriteError(message: string): never {
     throw new AppError("INVITATION_EXISTS", "An invitation is already pending for that email.", 409)
   }
 
+  if (message.includes("projects_key_check")) {
+    throw new AppError("INVALID_PROJECT_KEY", "Use letters, numbers, and hyphens only.", 422)
+  }
+
   if (message.includes("projects_key_key") || message.includes("duplicate key")) {
     throw new AppError("DUPLICATE_PROJECT_KEY", "That project key is already in use.", 409)
   }

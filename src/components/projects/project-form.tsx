@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createProject, updateProject } from "@/lib/actions/projects"
-import { suggestProjectKey } from "@/lib/projects/format"
+import { normalizeProjectKey, projectKeyMaxLength, suggestProjectKey } from "@/lib/projects/format"
 import { projectIconNames } from "@/lib/projects/icons"
 import {
   createProjectSchema,
@@ -143,7 +143,7 @@ function CreateProjectForm({
         onOpenChange?.(next)
       }}
       title="New project"
-      description="Name the workspace and choose a short key. You become the owner and the lead."
+      description="Name the workspace and choose a key. You become the owner and the lead."
       dirty={form.formState.isDirty}
       pending={pending}
     >
@@ -306,14 +306,15 @@ function SharedFields<T extends CreateProjectValues>({
                 autoComplete="off"
                 className="uppercase"
                 placeholder="BIRTH"
+                maxLength={projectKeyMaxLength}
                 {...field}
                 onChange={(event) => {
                   onKeyTouch()
-                  field.onChange(event.target.value.toUpperCase())
+                  field.onChange(normalizeProjectKey(event.target.value))
                 }}
               />
             </FormControl>
-            <FormDescription>Issues in this project are numbered from this key, like BIRTH-1.</FormDescription>
+            <FormDescription>Letters, numbers, and hyphens. Issues are numbered from this key, like BIRTH-1.</FormDescription>
             <FormMessage />
           </FormItem>
         )}

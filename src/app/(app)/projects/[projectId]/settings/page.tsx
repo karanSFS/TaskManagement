@@ -52,7 +52,7 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold">{project.name}</h2>
-              <Badge variant="outline">{project.key}</Badge>
+              <Badge variant="outline" className="max-w-full [overflow-wrap:anywhere]">{project.key}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground [overflow-wrap:anywhere]">{project.description || "No description yet."}</p>
             <p className="mt-2 text-xs text-muted-foreground">

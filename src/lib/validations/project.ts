@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { isProjectIcon } from "@/lib/projects/icons"
+import { isProjectKey, projectKeyMaxLength } from "@/lib/projects/format"
 
 export const projectRoles = ["owner", "admin", "member"] as const
 
@@ -10,7 +11,9 @@ const projectKey = z
   .string()
   .trim()
   .toUpperCase()
-  .regex(/^[A-Z][A-Z0-9]{1,9}$/, "Use 2–10 letters or numbers, starting with a letter")
+  .min(1, "Enter a project key")
+  .max(projectKeyMaxLength, "Key is too long")
+  .refine(isProjectKey, "Use letters, numbers, and hyphens only")
 
 const projectIcon = z
   .string()

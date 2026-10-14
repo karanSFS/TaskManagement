@@ -55,7 +55,7 @@ async function ProjectFrame({
             <ProjectIcon name={project.icon} className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs text-muted-foreground">{project.key}</p>
+            <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">{project.key}</p>
             <h1 className="truncate text-xl font-semibold tracking-tight" title={project.name}>
               {project.name}
             </h1>

@@ -161,7 +161,7 @@ function ProjectRow({ project, userId }: { project: ProjectSummary; userId: stri
             <Link href={projectHref(project.id, archived ? "" : "board")} className="truncate text-sm font-medium hover:underline">
               {project.name}
             </Link>
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{project.key}</span>
+            <span className="font-mono text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{project.key}</span>
             {archived ? <Badge variant="secondary">Archived</Badge> : null}
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{project.description || "No description"}</p>
