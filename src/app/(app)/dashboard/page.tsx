@@ -53,7 +53,7 @@ async function HomeContent() {
   const { counts } = myWork
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Hello, {displayName(user)}</h1>
@@ -100,27 +100,47 @@ async function HomeContent() {
         <Stat href="/issues" label="Open in your projects" value={openIssues} />
       </dl>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]">
-        <Panel
-          title="Assigned to you"
-          href="/my-work"
-          action={counts.assigned > 7 ? `View all ${counts.assigned}` : "My work"}
-        >
-          {myWork.items.length === 0 ? (
-            <PanelEmpty>
-              Nothing is assigned to you. Pick something up from a project board, or{" "}
-              <Link href="/issues" className="font-medium text-primary hover:underline">browse all issues</Link>.
-            </PanelEmpty>
-          ) : (
-            <ul className="divide-y">
-              {myWork.items.slice(0, 7).map((issue) => (
-                <WorkRow key={issue.id} issue={issue} today={today} />
-              ))}
-            </ul>
-          )}
-        </Panel>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,20rem)]">
+        <div className="grid min-w-0 gap-4">
+          <Panel
+            title="Assigned to you"
+            href="/my-work"
+            action={counts.assigned > 7 ? `View all ${counts.assigned}` : "My work"}
+          >
+            {myWork.items.length === 0 ? (
+              <PanelEmpty>
+                Nothing is assigned to you. Pick something up from a project board, or{" "}
+                <Link href="/issues" className="font-medium text-primary hover:underline">browse all issues</Link>.
+              </PanelEmpty>
+            ) : (
+              <ul className="divide-y">
+                {myWork.items.slice(0, 7).map((issue) => (
+                  <WorkRow key={issue.id} issue={issue} today={today} />
+                ))}
+              </ul>
+            )}
+          </Panel>
 
-        <div className="grid min-w-0 gap-6">
+          {active.length > 0 ? (
+            <Panel title="Your projects" href="/projects" action="All projects">
+              <ul className="divide-y">
+                {active.slice(0, 6).map((project) => (
+                  <ProjectRow key={project.id} project={project} />
+                ))}
+              </ul>
+              {archived.length > 0 ? (
+                <p className="border-t px-4 py-2">
+                  <Link href="/projects?status=archived" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                    <Archive className="size-3.5" />
+                    {archived.length} archived {archived.length === 1 ? "project" : "projects"}
+                  </Link>
+                </p>
+              ) : null}
+            </Panel>
+          ) : null}
+        </div>
+
+        <div className="grid min-w-0 content-start gap-4">
           <Panel title="Coming up" href="/my-work?view=due" action="Due soon">
             {upcoming.dueSoon.items.length === 0 ? (
               <PanelEmpty>No deadlines in the next 7 days.</PanelEmpty>
@@ -163,23 +183,6 @@ async function HomeContent() {
           </Panel>
         </div>
       </div>
-
-      {active.length > 0 ? (
-        <section aria-labelledby="home-projects" className="grid gap-3">
-          <PanelHeading id="home-projects" title="Your projects" href="/projects" action="All projects" />
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {active.slice(0, 6).map((project) => (
-              <ProjectTile key={project.id} project={project} />
-            ))}
-          </ul>
-          {archived.length > 0 ? (
-            <Link href="/projects?status=archived" className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <Archive className="size-3.5" />
-              {archived.length} archived {archived.length === 1 ? "project" : "projects"}
-            </Link>
-          ) : null}
-        </section>
-      ) : null}
     </div>
   )
 }
@@ -298,7 +301,7 @@ function Panel({ title, href, action, children }: { title: string; href?: string
 }
 
 function PanelEmpty({ children }: { children: ReactNode }) {
-  return <p className="px-4 py-6 text-sm text-muted-foreground">{children}</p>
+  return <p className="px-4 py-3 text-sm text-muted-foreground">{children}</p>
 }
 
 function WorkRow({ issue, today }: { issue: MyWorkItem; today: string }) {
@@ -364,27 +367,24 @@ function SprintRow({ sprint }: { sprint: HomeSprint }) {
   )
 }
 
-function ProjectTile({ project }: { project: ProjectSummary }) {
+function ProjectRow({ project }: { project: ProjectSummary }) {
   const accent = projectAccent(project.key)
   return (
-    <li className="min-w-0">
-      <Link
-        href={projectHref(project.id, "board")}
-        className="flex h-full flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-      >
-        <span className="flex min-w-0 items-center gap-3">
-          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
-            <ProjectIcon name={project.icon} />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">{project.name}</span>
-            <span className="block font-mono text-[11px] text-muted-foreground">{project.key}</span>
-          </span>
+    <li>
+      <Link href={projectHref(project.id, "board")} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-muted/40">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${accent.wash} ${accent.text}`}>
+          <ProjectIcon name={project.icon} />
         </span>
-        <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} barClass={accent.bar} />
-        <span className="mt-auto flex justify-end">
-          <PersonStack people={project.roster} total={project.memberCount} />
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-medium">{project.name}</span>
+            <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">{project.key}</span>
+          </span>
+          <div className="mt-1.5">
+            <ProgressMeter done={project.doneIssueCount} open={project.openIssueCount} barClass={accent.bar} />
+          </div>
         </span>
+        <PersonStack people={project.roster} total={project.memberCount} />
       </Link>
     </li>
   )

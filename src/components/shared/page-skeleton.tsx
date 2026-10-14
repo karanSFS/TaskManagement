@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function DashboardSkeleton() {
   return (
-    <div className="grid gap-6" role="status" aria-live="polite">
+    <div className="grid gap-4" role="status" aria-live="polite">
       <p className="sr-only">Loading home</p>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-2">
@@ -11,11 +11,14 @@ export function DashboardSkeleton() {
         </div>
         <Skeleton className="h-8 w-28" />
       </div>
-      <Skeleton className="h-20 rounded-xl" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]">
-        <Skeleton className="h-80 rounded-xl" />
-        <div className="grid gap-6">
-          <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,20rem)]">
+        <div className="grid gap-4">
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+        </div>
+        <div className="grid gap-4">
+          <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-40 rounded-xl" />
         </div>
       </div>
