@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { updateIssue } from "@/lib/actions/issues"
+import { assignIssueToSprint } from "@/lib/actions/sprints"
+import { sprintOptions } from "@/lib/issues/sprint-field"
 import { formatDueDate, formatProjectDate } from "@/lib/projects/format"
 import { cn } from "@/lib/utils"
 import type { UpdateIssueValues } from "@/lib/validations/issue"
@@ -216,6 +218,8 @@ export function InlineDescription() {
 }
 
 export function IssueDetailsPanel({
+  issueId,
+  projectId,
   types,
   statuses,
   priorities,
@@ -224,7 +228,11 @@ export function IssueDetailsPanel({
   reporterName,
   createdAt,
   updatedAt,
+  sprint,
+  openSprints,
 }: {
+  issueId: string
+  projectId: string
   types: Option[]
   statuses: StatusOption[]
   priorities: Option[]
@@ -233,6 +241,8 @@ export function IssueDetailsPanel({
   reporterName: string
   createdAt: string
   updatedAt: string
+  sprint: { id: string; name: string; status: string } | null
+  openSprints: { id: string; name: string; status: string }[]
 }) {
   const { values, canEdit, saving, save } = useIssueValues()
   const status = statuses.find((item) => item.id === values.statusId)
@@ -273,9 +283,11 @@ export function IssueDetailsPanel({
       </Row>
       <Row label="Priority" busy={saving === "priorityId"}>
         {canEdit ? (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <PriorityMark name={priority?.name ?? ""} />
-            <Select value={values.priorityId} options={priorities} label="Priority" onChange={(value) => void save("priorityId", value)} />
+            <div className="min-w-0 flex-1">
+              <Select value={values.priorityId} options={priorities} label="Priority" onChange={(value) => void save("priorityId", value)} />
+            </div>
           </div>
         ) : (
           <PriorityMark name={priority?.name ?? ""} />
@@ -290,12 +302,12 @@ export function IssueDetailsPanel({
       </Row>
       <Row label="Due date" busy={saving === "dueDate"}>
         {canEdit ? (
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
             <input
               type="date"
               aria-label="Due date"
               value={values.dueDate}
-              className={cn(filterFieldClass, "h-8", overdue && "border-destructive/60 text-destructive")}
+              className={cn(filterFieldClass, "h-8 min-w-0 flex-1", overdue && "border-destructive/60 text-destructive")}
               onChange={(event) => {
                 const next = event.target.value
                 if (next === "" || /^\d{4}-\d{2}-\d{2}$/.test(next)) void save("dueDate", next)
@@ -313,6 +325,7 @@ export function IssueDetailsPanel({
           </span>
         )}
       </Row>
+      <SprintRow issueId={issueId} projectId={projectId} sprint={sprint} openSprints={openSprints} canEdit={canEdit} />
       <Row label="Reporter">
         <span className="truncate">{reporterName}</span>
       </Row>
@@ -349,6 +362,65 @@ export function CopyLinkButton({ path }: { path: string }) {
   )
 }
 
+function SprintRow({
+  issueId,
+  projectId,
+  sprint,
+  openSprints,
+  canEdit,
+}: {
+  issueId: string
+  projectId: string
+  sprint: { id: string; name: string; status: string } | null
+  openSprints: { id: string; name: string; status: string }[]
+  canEdit: boolean
+}) {
+  const router = useRouter()
+  const changed = useIssueChanged()
+  const [pending, startTransition] = useTransition()
+  const currentId = sprint?.id ?? ""
+  const [value, setValue] = useState(currentId)
+  const [synced, setSynced] = useState(currentId)
+  if (currentId !== synced && !pending) {
+    setSynced(currentId)
+    setValue(currentId)
+  }
+  const options = sprintOptions(sprint, openSprints)
+  const label = options.find((option) => option.id === (sprint?.id ?? ""))?.name ?? "Backlog"
+
+  function move(next: string) {
+    const previous = value
+    setValue(next)
+    startTransition(async () => {
+      const result = await assignIssueToSprint(projectId, issueId, next)
+      if (result?.error) {
+        setValue(previous)
+        toast.error(result.error)
+        return
+      }
+      toast.success(result?.success ?? "Sprint updated.")
+      changed()
+      router.refresh()
+    })
+  }
+
+  return (
+    <Row label="Sprint" busy={pending}>
+      {canEdit ? (
+        <select aria-label="Sprint" value={value} disabled={pending} className={cn(filterFieldClass, "h-8 w-full min-w-0")} onChange={(event) => move(event.target.value)}>
+          {options.map((option) => (
+            <option key={option.id || "backlog"} value={option.id} disabled={option.disabled}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="truncate">{label}</span>
+      )}
+    </Row>
+  )
+}
+
 function Row({ label, busy = false, children }: { label: string; busy?: boolean; children: ReactNode }) {
   return (
     <div className="grid min-w-0 grid-cols-[6rem_minmax(0,1fr)] items-start gap-2">
@@ -373,7 +445,7 @@ function Select({
   onChange: (value: string) => void
 }) {
   return (
-    <select aria-label={label} value={value} className={cn(filterFieldClass, "h-8")} onChange={(event) => onChange(event.target.value)}>
+    <select aria-label={label} value={value} className={cn(filterFieldClass, "h-8 w-full min-w-0")} onChange={(event) => onChange(event.target.value)}>
       {options.map((option) => (
         <option key={option.id} value={option.id}>
           {option.name}

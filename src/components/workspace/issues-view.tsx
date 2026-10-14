@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { PriorityMark } from "@/components/shared/priority-mark"
 import { StatusChip, priorityEdge } from "@/components/shared/visual"
 import { getCurrentUser } from "@/lib/auth/session"
-import { formatProjectDate, issueKey } from "@/lib/projects/format"
+import { formatDueDate, formatProjectDate, issueKey } from "@/lib/projects/format"
 import { getIssueCatalog, listIssueProjects, listIssues } from "@/lib/services/issue.service"
 import { boardAssignees, issueSorts } from "@/lib/validations/issue"
 
@@ -177,6 +177,8 @@ export async function IssuesView({
                   <PriorityMark name={issue.priority} />
                   <span>{issue.typeName}</span>
                   <span className="max-w-36 truncate">{issue.assigneeName ?? "Unassigned"}</span>
+                  <span className="max-w-36 truncate">{issue.sprintName ?? "Backlog"}</span>
+                  {issue.dueDate ? <span>{formatDueDate(issue.dueDate)}</span> : null}
                   <span className="max-w-36 truncate">Reporter {issue.reporterName}</span>
                   <span>Updated {formatProjectDate(issue.updatedAt)}</span>
                 </>

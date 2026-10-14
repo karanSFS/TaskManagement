@@ -37,6 +37,8 @@ export type IssueListItem = {
 export type IssueTableItem = IssueListItem & {
   typeName: string
   reporterName: string
+  dueDate: string | null
+  sprintName: string | null
 }
 
 export type MyWorkItem = IssueListItem & { dueDate: string | null }
@@ -161,6 +163,8 @@ export type IssueDetail = {
   subtasks: { id: string; number: number; title: string; status: string }[]
   links: { id: string; type: string; direction: "out" | "in"; issueId: string; number: number; title: string; projectKey: string }[]
   linkChoices: { id: string; number: number; title: string }[]
+  sprint: { id: string; name: string; status: string } | null
+  openSprints: { id: string; name: string; status: string }[]
 }
 
 type NameEmbed = { display_name: string } | { display_name: string }[] | null
@@ -322,11 +326,11 @@ export async function listIssues(userId: string, page: number, filters: IssueFil
   if (error) throw new DatabaseError("Could not load issues.")
 
   const rows = data ?? []
-  const details = new Map<string, { typeName: string; reporterName: string }>()
+  const details = new Map<string, { typeName: string; reporterName: string; dueDate: string | null; sprintName: string | null }>()
   if (rows.length > 0) {
     const extra = await supabase
       .from("issues")
-      .select("id, issue_types!issues_issue_type_id_fkey(name), reporter:profiles!issues_reporter_id_fkey(display_name)")
+      .select("id, due_date, issue_types!issues_issue_type_id_fkey(name), reporter:profiles!issues_reporter_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(name)")
       .in("id", rows.map((issue) => issue.id))
 
     if (extra.error || extra.data === null) throw new DatabaseError("Could not load issues.")
@@ -334,6 +338,8 @@ export async function listIssues(userId: string, page: number, filters: IssueFil
       details.set(row.id, {
         typeName: one(row.issue_types as NamedEmbed)?.name ?? "Unknown",
         reporterName: one(row.reporter as NameEmbed)?.display_name ?? "Unknown",
+        dueDate: row.due_date,
+        sprintName: one(row.sprint as { name: string } | { name: string }[] | null)?.name ?? null,
       })
     }
     if (rows.some((issue) => !details.has(issue.id))) throw new DatabaseError("Could not load issues.")
@@ -355,6 +361,8 @@ export async function listIssues(userId: string, page: number, filters: IssueFil
       reporterName: details.get(issue.id)?.reporterName ?? "Unknown",
       assigneeName: issue.assignee_name,
       updatedAt: issue.updated_at,
+      dueDate: details.get(issue.id)?.dueDate ?? null,
+      sprintName: details.get(issue.id)?.sprintName ?? null,
     })),
   }
 }
@@ -531,7 +539,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   const { data: issue, error } = await supabase
     .from("issues")
     .select(
-      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, parent_issue_id, issue_type_id, status_id, priority_id, project:projects!issues_project_id_fkey(id, key, name, archived_at), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name)",
+      "id, issue_number, title, description, created_at, updated_at, due_date, project_id, assignee_id, reporter_id, parent_issue_id, issue_type_id, status_id, priority_id, sprint_id, project:projects!issues_project_id_fkey(id, key, name, archived_at), assignee:profiles!issues_assignee_id_fkey(display_name), reporter:profiles!issues_reporter_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(id, name, status)",
     )
     .eq("id", issueId)
     .maybeSingle()
@@ -539,7 +547,7 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
   if (error) throw new DatabaseError("Could not load this issue.")
   if (!issue) return null
 
-  const [catalog, labels, projectLabels, members, comments, history, children, links, choices, parent] = await Promise.all([
+  const [catalog, labels, projectLabels, members, comments, history, children, links, choices, parent, openSprints] = await Promise.all([
     getIssueCatalog(),
     supabase.from("issue_labels").select("label:labels(id, name, color)").eq("issue_id", issueId),
     supabase.from("labels").select("id, name, color").eq("project_id", issue.project_id).order("name"),
@@ -581,9 +589,10 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
     issue.parent_issue_id
       ? supabase.from("issues").select("id, issue_number, title").eq("id", issue.parent_issue_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    supabase.from("sprints").select("id, name, status").eq("project_id", issue.project_id).neq("status", "completed").order("name"),
   ])
 
-  if (labels.error || projectLabels.error || members.error || comments.error || history.error || children.error || links.error || choices.error || parent.error) {
+  if (labels.error || projectLabels.error || members.error || comments.error || history.error || children.error || links.error || choices.error || parent.error || openSprints.error || openSprints.data === null) {
     throw new DatabaseError("Could not load this issue.")
   }
 
@@ -675,6 +684,8 @@ export async function getIssue(issueId: string, userId: string): Promise<IssueDe
       number: choice.issue_number,
       title: choice.title,
     })),
+    sprint: one(issue.sprint as { id: string; name: string; status: string } | { id: string; name: string; status: string }[] | null),
+    openSprints: openSprints.data,
   }
 }
 

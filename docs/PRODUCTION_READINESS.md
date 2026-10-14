@@ -380,3 +380,9 @@ Storage cleanup and invitation limits (`20261012100000_launch_guards.sql`):
 Still open from this round:
 
 - Atomic label and attachment RPCs.
+
+**Issues and projects (this pass):**
+
+- An issue shows its sprint in Details, on the issue page and in the drawer. You can move it to an open sprint or back to the backlog. A completed sprint stays visible and cannot take the issue again.
+- The issues list shows the sprint and the due date on each row.
+- A project's recent issues wrap on a narrow screen and show status, sprint, and assignee. Done opens the issues list filtered to Done.

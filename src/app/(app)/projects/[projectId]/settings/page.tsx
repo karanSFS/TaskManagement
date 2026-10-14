@@ -54,7 +54,7 @@ async function SettingsContent({ params }: { params: Promise<{ projectId: string
               <h2 className="text-sm font-semibold">{project.name}</h2>
               <Badge variant="outline">{project.key}</Badge>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{project.description || "No description yet."}</p>
+            <p className="mt-1 text-sm text-muted-foreground [overflow-wrap:anywhere]">{project.description || "No description yet."}</p>
             <p className="mt-2 text-xs text-muted-foreground">
               Lead {project.leadName} · {project.memberCount} {project.memberCount === 1 ? "member" : "members"} · {project.openIssueCount} open
             </p>

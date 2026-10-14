@@ -13,6 +13,7 @@ import { MetricLink, ProgressMeter, StatusChip } from "@/components/shared/visua
 import { isProjectIcon } from "@/lib/projects/icons"
 import { getCurrentUser } from "@/lib/auth/session"
 import { formatProjectDate, issueKey, roleLabel } from "@/lib/projects/format"
+import { getIssueCatalog } from "@/lib/services/issue.service"
 import { getProject } from "@/lib/services/project.service"
 
 export const metadata = { title: "Project" }
@@ -31,10 +32,12 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
     return null
   }
 
-  const project = await getProject(projectId, user.id)
+  const [project, catalog] = await Promise.all([getProject(projectId, user.id), getIssueCatalog()])
   if (!project) {
     notFound()
   }
+
+  const doneStatus = catalog.statuses.find((status) => status.category === "done")
 
   const totalIssues = project.openIssueCount + project.doneIssueCount
   const canEdit = project.role === "owner" || project.role === "admin" || project.leadId === user.id
@@ -43,7 +46,7 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-muted-foreground">{project.description || "No description yet."}</p>
+        <p className="max-w-2xl text-sm text-muted-foreground [overflow-wrap:anywhere]">{project.description || "No description yet."}</p>
         {canEdit && leadId ? (
           <EditProjectButton
             projectId={project.id}
@@ -63,7 +66,7 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetricLink label="Open issues" value={project.openIssueCount} hint="Not done in this project" tone="bg-info" href={`/projects/${project.id}/issues`} />
-        <MetricLink label="Done" value={project.doneIssueCount} hint="Completed in this project" tone="bg-success" />
+        <MetricLink label="Done" value={project.doneIssueCount} hint="Completed in this project" tone="bg-success" href={doneStatus ? `/projects/${project.id}/issues?statusId=${doneStatus.id}` : undefined} />
         <MetricLink label="Members" value={project.memberCount} hint={`${roleLabel(project.role)} · lead ${project.leadName}`} tone="bg-primary" href={`/projects/${project.id}/members`} />
       </div>
       <p className="text-xs text-muted-foreground">Created {formatProjectDate(project.createdAt)} · next number {issueKey(project.key, project.nextIssueNumber)}</p>
@@ -83,9 +86,6 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
             )}
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {project.openIssueCount} open · {project.doneIssueCount} done · next number {issueKey(project.key, project.nextIssueNumber)}
-        </p>
         {project.archivedAt ? (
           <p className="text-sm text-muted-foreground">
             This project is archived. Restore it in settings to file new issues.
@@ -108,15 +108,21 @@ async function ProjectOverview({ params }: { params: Promise<{ projectId: string
         {project.issues.length > 0 ? (
           <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
             {project.issues.map((issue) => (
-              <li key={issue.id}>
-                <div className="flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-muted/40">
-                  <Link href={`/issues/${issue.id}`} className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:underline">
+              <li key={issue.id} className="min-w-0">
+                <div className="grid min-w-0 gap-1 px-3 py-2.5 text-sm hover:bg-muted/40 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-3">
+                  <Link href={`/issues/${issue.id}`} className="inline-flex w-fit items-center gap-1 font-mono text-xs text-muted-foreground hover:underline">
                     <LinkPending />
                     {issueKey(project.key, issue.number)}
                   </Link>
-                  <IssueOpenButton issueId={issue.id} className="min-w-0 flex-1 truncate text-left font-medium">{issue.title}</IssueOpenButton>
-                  <StatusChip name={issue.status} category={issue.category} />
-                  <span className="hidden text-xs text-muted-foreground sm:inline">{formatProjectDate(issue.updatedAt)}</span>
+                  <div className="grid min-w-0 gap-1">
+                    <IssueOpenButton issueId={issue.id} className="min-w-0 truncate text-left font-medium">{issue.title}</IssueOpenButton>
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <StatusChip name={issue.status} category={issue.category} />
+                      <span className="max-w-40 truncate">{issue.sprintName ?? "Backlog"}</span>
+                      <span className="max-w-40 truncate">{issue.assigneeName ?? "Unassigned"}</span>
+                      <span>{formatProjectDate(issue.updatedAt)}</span>
+                    </p>
+                  </div>
                 </div>
               </li>
             ))}

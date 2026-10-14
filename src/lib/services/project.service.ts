@@ -41,6 +41,8 @@ export type ProjectIssue = {
   status: string
   category: string
   updatedAt: string
+  assigneeName: string | null
+  sprintName: string | null
 }
 
 export type ProjectDetail = ProjectSummary & {
@@ -270,7 +272,7 @@ export const getProject = cache(async (projectId: string, userId: string): Promi
   const [{ data: issues, error: issueError }, counts] = await Promise.all([
     supabase
       .from("issues")
-      .select("id, issue_number, title, updated_at, issue_statuses!issues_status_id_fkey(name, category)")
+      .select("id, issue_number, title, updated_at, issue_statuses!issues_status_id_fkey(name, category), assignee:profiles!issues_assignee_id_fkey(display_name), sprint:sprints!issues_sprint_id_fkey(name)")
       .eq("project_id", projectId)
       .order("updated_at", { ascending: false })
       .limit(recentIssueLimit),
@@ -302,6 +304,8 @@ export const getProject = cache(async (projectId: string, userId: string): Promi
       status: status?.name ?? "Unknown",
       category: status?.category ?? "todo",
       updatedAt: issue.updated_at,
+      assigneeName: one(issue.assignee as ProfileEmbed)?.display_name ?? null,
+      sprintName: one(issue.sprint as { name: string } | { name: string }[] | null)?.name ?? null,
     }
   })
 

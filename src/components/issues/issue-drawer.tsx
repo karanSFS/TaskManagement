@@ -156,6 +156,8 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
 
         <div className="rounded-xl border bg-muted/20 p-3">
           <IssueDetailsPanel
+            issueId={issue.id}
+            projectId={issue.projectId}
             types={data.types}
             statuses={data.statuses}
             priorities={data.priorities}
@@ -164,6 +166,8 @@ function LoadedDrawer({ request, onClose }: { request: Promise<DrawerData>; onCl
             reporterName={issue.reporterName}
             createdAt={issue.createdAt}
             updatedAt={issue.updatedAt}
+            sprint={issue.sprint}
+            openSprints={issue.openSprints}
           />
         </div>
 

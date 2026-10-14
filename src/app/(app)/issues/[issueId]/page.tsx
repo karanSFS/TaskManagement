@@ -129,6 +129,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
             <div className="rounded-xl border bg-card p-4">
               <h2 className="mb-3 text-sm font-semibold">Details</h2>
               <IssueDetailsPanel
+                issueId={issue.id}
+                projectId={issue.projectId}
                 types={catalog.types}
                 statuses={catalog.statuses}
                 priorities={catalog.priorities}
@@ -137,6 +139,8 @@ async function IssueContent({ params }: { params: Promise<{ issueId: string }> }
                 reporterName={issue.reporterName}
                 createdAt={issue.createdAt}
                 updatedAt={issue.updatedAt}
+                sprint={issue.sprint}
+                openSprints={issue.openSprints}
               />
             </div>
             <div className="rounded-xl border bg-card p-4">
