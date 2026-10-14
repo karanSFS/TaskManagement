@@ -127,7 +127,7 @@ Each phase ends with typecheck, lint, tests, a production build, and a click-thr
 
 ### Phase A — Security and data integrity (P0/P1) · ~3 days
 
-One new migration, pushed with `--dry-run` first.
+One new migration, pushed with `--dry-run` first. 
 
 1. Issue update trigger: freeze `reporter_id` and `created_by`-style columns; validate `assignee_id` is a project member; validate `parent_issue_id` is in the same project and not a cycle.
 2. Comment update `WITH CHECK`: `issue_id` cannot change. Allow owners/admins to delete comments.
